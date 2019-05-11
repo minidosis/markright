@@ -196,7 +196,7 @@ const walk = (markright, dispatcher) => {
   })
 }
 
-class HtmlGenerator {
+class Generator {
   constructor() {
     this.stack = []
     this.pos = -1
@@ -205,9 +205,8 @@ class HtmlGenerator {
 
   push() {
     this.stack.push({
-      html: '',
+      doc: '',
       paragraph: '',
-      lastWasText: false,
       inline: true,
     })
     this.pos++
@@ -216,47 +215,45 @@ class HtmlGenerator {
   pop() {
     let result
     if (this.top.inline) {
-      result = this.top.paragraph;
+      result = this.top.paragraph
     } else {
       if (this.top.paragraph.length > 0) {
-        this.top.html += `<p>${this.top.paragraph}</p>\n`
+        this.top.doc += this.top.paragraph
       }
-      result = this.top.html
+      result = this.top.doc
     }
     this.stack.pop()
     this.pos--
     return result
   }
 
-
   get top() {
-    return this.stack[this.pos];
+    return this.stack[this.pos]
   }
 
-
   add(str) {
-    this.top.paragraph += str;
+    this.top.paragraph += str
   }
 
   newParagraph() {
-    this.top.inline = false;
+    this.top.inline = false
     if (this.top.paragraph) {
-      this.top.html += `<p>${this.top.paragraph}</p>\n`
+      this.top.doc += this.top.paragraph
     }
     this.top.paragraph = ''
   }
 
   __text__(text) {
-    this.add((this.top.lastWasText ? '\n' : '') + text)
-    this.top.lastWasText = true
+    this.add(text)
   }
 
   __null__() {
     this.newParagraph()
+    this.top.doc += '\n'
   }
 
   __command__(node) {
-    this.add(`<span class="error">Command <b>${node.id}</b> not found</span>`)
+    this.add(`@error{Command "${node.id}" not found}`)
   }
 
   generate(markright) {
@@ -264,10 +261,6 @@ class HtmlGenerator {
     walk(markright, this)
     return this.pop()
   }
-}
-
-HtmlGenerator.generate = (markright) => {
-  const generator = new HtmlGenerator();
 }
 
 const genHtml = (markright, commandFuncs) => {
@@ -307,5 +300,5 @@ const genHtml = (markright, commandFuncs) => {
 module.exports = {
   parse,
   genHtml,
-  HtmlGenerator,
+  Generator,
 }
