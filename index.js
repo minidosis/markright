@@ -174,14 +174,14 @@ const parse = (str, commandFuncs) => {
   }
 }
 
-const genHtml = (markright, context, commandFuncs) => {
+const genHtml = (markright, commandFuncs) => {
   // Hasta que no veamos un null, el texto es 'inline'
   // En el momento que vemos un null, entonces pasamos a usar '<p>' 
   let html = '', paragraph = '', lastWasText = false, inline = true;
   for (let node of markright) {
     if (typeof node === 'string') {
       if (commandFuncs && '<text>' in commandFuncs) {
-        node = commandFunds['<text>']({ node, context })
+        node = commandFunds['<text>'](node)
       }
       paragraph += (lastWasText ? '\n' : '') + node
     } else if (node == null) {
@@ -190,7 +190,7 @@ const genHtml = (markright, context, commandFuncs) => {
       paragraph = ''
     } else if (typeof node === 'object') {
       if (commandFuncs && node.id in commandFuncs) {
-        paragraph += commandFuncs[node.id]({ ...node, context })
+        paragraph += commandFuncs[node.id](node)
       } else {
         paragraph += `<span class="error">Command <b>${node.id}</b> not found</span>`
       }
