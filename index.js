@@ -174,12 +174,12 @@ const parse = (str, commandFuncs) => {
 const walk = (markright, dispatcher) => {
   const invoke = (node, id, base) => {
     id = (id === '' ? '__empty__' : id)
-    if (id in dispatcher) {
-      dispatcher[id](node)
-    } else if (base in dispatcher) {
-      dispatcher[base](node)
+    if (dispatcher.has(id)) {
+      dispatcher.dispatch(id, node)
+    } else if (dispatcher.has(base)) {
+      dispatcher.dispatch(base, node)
     } else if ('__error__' in dispatcher) {
-      dispatcher['__error__'](node)
+      dispatcher.dispatch('__error__', node)
     } else {
       throw new Error(`markright.walk: no dispatcher available for ${id}`)
     }
@@ -204,11 +204,22 @@ class Generator {
     this.push()
   }
 
+  has(id) { return id in this }
+
+  dispatch(id, node) {
+    this.top.calling = id;
+    this[id](node)
+  }
+
+  get context() { return this.stack.map(frame => frame.calling) }
+  in(ctx) { return this.context.filter(x => x === ctx).length > 0 }
+
   push() {
     this.stack.push({
       doc: '',
       paragraph: '',
       inline: true,
+      calling: null,
     })
     this.pos++
   }
