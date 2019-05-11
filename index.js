@@ -173,6 +173,7 @@ const parse = (str, commandFuncs) => {
 
 const walk = (markright, dispatcher) => {
   const invoke = (node, id, base) => {
+    id = (id === '' ? '__empty__' : id)
     if (id in dispatcher) {
       dispatcher[id](node)
     } else if (base in dispatcher) {
@@ -218,7 +219,7 @@ class Generator {
       result = this.top.paragraph
     } else {
       if (this.top.paragraph.length > 0) {
-        this.top.doc += this.top.paragraph
+        this.top.doc += this.finishParagraph(this.top.paragraph)
       }
       result = this.top.doc
     }
@@ -227,29 +228,29 @@ class Generator {
     return result
   }
 
-  get top() {
-    return this.stack[this.pos]
-  }
+  get top() { return this.stack[this.pos] }
+  get paragraph() { return this.top.paragraph }
+  get doc() { return this.top.doc }
 
   add(str) {
     this.top.paragraph += str
-  }
-
-  newParagraph() {
-    this.top.inline = false
-    if (this.top.paragraph) {
-      this.top.doc += this.top.paragraph
-    }
-    this.top.paragraph = ''
   }
 
   __text__(text) {
     this.add(text)
   }
 
+  finishParagraph(paragraph) { return paragraph + '\n' }
+
   __null__() {
-    this.newParagraph()
-    this.top.doc += '\n'
+    this.top.inline = false
+    if (this.top.paragraph) {
+      // FIXME? 
+      // We can redefine finishParagraph to process the paragraph in some 
+      // way before adding it to the document...
+      this.top.doc += this.finishParagraph(this.top.paragraph)
+    }
+    this.top.paragraph = ''
   }
 
   __command__(node) {
@@ -263,42 +264,7 @@ class Generator {
   }
 }
 
-const genHtml = (markright, commandFuncs) => {
-  // Hasta que no veamos un null, dispatcherexto es 'inline'
-  // En el momento que vemos un null, entonces pasamos a usar '<p>' 
-  let html = '', paragraph = '', lastWasText = false, inline = true;
-  for (let node of markright) {
-    if (typeof node === 'string') {
-      if (commandFuncs && '<text>' in commandFuncs) {
-        node = commandFuncs['<text>'](node)
-      }
-      paragraph += (lastWasText ? '\n' : '') + node
-    } else if (node == null) {
-      inline = false;
-      html += `<p>${paragraph}</p>\n`
-      paragraph = ''
-    } else if (typeof node === 'object') {
-      if (commandFuncs && node.id in commandFuncs) {
-        paragraph += commandFuncs[node.id](node)
-      } else {
-        paragraph += `<span class="error">Command <b>${node.id}</b> not found</span>`
-      }
-    } else {
-      throw new Error(`genHtml: unrecognized type of node`)
-    }
-    lastWasText = (typeof node === 'string')
-  }
-  if (inline) {
-    return paragraph;
-  }
-  if (paragraph.length > 0) {
-    html += `<p>${paragraph}</p>\n`
-  }
-  return html
-}
-
 module.exports = {
   parse,
-  genHtml,
   Generator,
 }
