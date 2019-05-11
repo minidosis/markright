@@ -27,28 +27,36 @@ const tests = [
     output: `["abc",{"id":"x","args":["y","z"],"children":["efg"]},"hij"]`
   },
   {
+    input: 'abc\ndef',
+    output: '["abc\\n","def"]'
+  },
+  {
     input: 'abc\n\ndef',
-    output: '["abc",null,"def"]'
+    output: '["abc\\n",null,"def"]'
   },
   {
     input: 'abc\n\n\ndef',
-    output: '["abc",null,null,"def"]'
+    output: '["abc\\n",null,null,"def"]'
   },
   {
     input: 'abc\n\n\n\ndef',
-    output: '["abc",null,null,null,"def"]'
+    output: '["abc\\n",null,null,null,"def"]'
   },
   {
     input: 'abc\n    \ndef',
-    output: '["abc",null,"def"]'
+    output: '["abc\\n",null,"def"]'
   },
   {
     input: 'abc\n    \ndef\n    \nghi',
-    output: '["abc",null,"def",null,"ghi"]'
+    output: '["abc\\n",null,"def\\n",null,"ghi"]'
+  },
+  {
+    input: 'abc\n    \ndef\n    \nghi\n',
+    output: '["abc\\n",null,"def\\n",null,"ghi\\n"]'
   },
   {
     input: 'a a a a \nb\n\nd\ne@xxx(1, 2, 3){a\n\nb}\n',
-    output: `["a a a a ","b",null,"d","e",{"id":"xxx","args":["1","2","3"],"children":["a",null,"b"]}]`
+    output: `["a a a a \\n","b\\n",null,"d\\n","e",{"id":"xxx","args":["1","2","3"],"children":["a\\n",null,"b"]},"\\n"]`
   },
   {
     input: '@code{int @main()<<< int a = 1; >>>}',
@@ -60,19 +68,19 @@ const tests = [
   },
   {
     input: '@code<<<@@include <iostream>;\nusing namespace std;\n\nint main() { cout << "hi"; }>>>',
-    output: '[{"id":"code","children":["@include <iostream>;","using namespace std;",null,"int main() { cout << \\"hi\\"; }"]}]'
+    output: '[{"id":"code","children":["@include <iostream>;\\n","using namespace std;\\n",null,"int main() { cout << \\"hi\\"; }"]}]'
   },
   {
     input: 'abc\n@d{e}\n',
-    output: '["abc ",{"id":"d","children":["e"]}]'
+    output: '["abc\\n",{"id":"d","children":["e"]},"\\n"]'
   },
   {
     input: 'abc\n\n@d{e}\n',
-    output: '["abc",null,{"id":"d","children":["e"]}]'
+    output: '["abc\\n",null,{"id":"d","children":["e"]},"\\n"]'
   },
   {
     input: 'abc @d{e}\nfgh',
-    output: '["abc ",{"id":"d","children":["e"]}," fgh"]'
+    output: '["abc ",{"id":"d","children":["e"]},"\\n","fgh"]'
   },
   {
     input: 'a@{}b',

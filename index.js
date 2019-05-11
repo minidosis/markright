@@ -12,8 +12,8 @@ class Parser {
 
   error(msg) { throw new Error(msg) }
 
-  ok()    { return this.pos < this.input.length }
-  curr()  { return this.input[this.pos] }
+  ok() { return this.pos < this.input.length }
+  curr() { return this.input[this.pos] }
   at(str) { return this.input.slice(this.pos, this.pos + str.length) === str }
 
   notAtSpace() { return this.ok() && !/\s/.test(this.curr()) }
@@ -66,7 +66,7 @@ class Parser {
     const opD = [...D].filter((_, i) => i % 2 == 0).join('')
 
     const isOpenDelim = ch => opD.indexOf(ch) !== -1
-    const makeInverseDelim = str => [...str].reverse().map(x => D[D.indexOf(x)+1]).join('')
+    const makeInverseDelim = str => [...str].reverse().map(x => D[D.indexOf(x) + 1]).join('')
 
     let delim = ''
     while (isOpenDelim(this.curr())) {
@@ -135,18 +135,15 @@ class Parser {
         }
         result.push(cmd)
         newline = false
-      } 
+      }
       else if (this.at('\n')) {
+        text += '\n'
         this.next()
-        if (this.at(CONTROL_CHARACTER)) {
-          // put a space separator when a command starts at beginning of line
-          text += ' ' 
-        }
         const allSpaces = /^\s*$/.test(text)
         if (allSpaces && newline) {
           result.push(null)
           text = ''
-        } else {  
+        } else {
           addPendingText()
         }
         newline = true;
@@ -174,14 +171,113 @@ const parse = (str, commandFuncs) => {
   }
 }
 
+const walk = (markright, dispatcher) => {
+  const invoke = (node, id, base) => {
+    if (id in dispatcher) {
+      dispatcher[id](node)
+    } else if (base in dispatcher) {
+      dispatcher[base](node)
+    } else if ('__error__' in dispatcher) {
+      dispatcher['__error__'](node)
+    } else {
+      throw new Error(`markright.walk: no dispatcher available for ${id}`)
+    }
+  }
+  return markright.map(node => {
+    if (typeof node === 'string') {
+      invoke(node, '__text__')
+    } else if (node === null) {
+      invoke(node, '__null__')
+    } else if (typeof node === 'object') {
+      invoke(node, node.id, '__command__')
+    } else {
+      throw new Error(`markright.walk: Unrecognized type of node (${node})`)
+    }
+  })
+}
+
+class HtmlGenerator {
+  constructor() {
+    this.stack = []
+    this.pos = -1
+    this.push()
+  }
+
+  push() {
+    this.stack.push({
+      html: '',
+      paragraph: '',
+      lastWasText: false,
+      inline: true,
+    })
+    this.pos++
+  }
+
+  pop() {
+    let result
+    if (this.top.inline) {
+      result = this.top.paragraph;
+    } else {
+      if (this.top.paragraph.length > 0) {
+        this.top.html += `<p>${this.top.paragraph}</p>\n`
+      }
+      result = this.top.html
+    }
+    this.stack.pop()
+    this.pos--
+    return result
+  }
+
+
+  get top() {
+    return this.stack[this.pos];
+  }
+
+
+  add(str) {
+    this.top.paragraph += str;
+  }
+
+  newParagraph() {
+    this.top.inline = false;
+    if (this.top.paragraph) {
+      this.top.html += `<p>${this.top.paragraph}</p>\n`
+    }
+    this.top.paragraph = ''
+  }
+
+  __text__(text) {
+    this.add((this.top.lastWasText ? '\n' : '') + text)
+    this.top.lastWasText = true
+  }
+
+  __null__() {
+    this.newParagraph()
+  }
+
+  __command__(node) {
+    this.add(`<span class="error">Command <b>${node.id}</b> not found</span>`)
+  }
+
+  generate(markright) {
+    this.push()
+    walk(markright, this)
+    return this.pop()
+  }
+}
+
+HtmlGenerator.generate = (markright) => {
+  const generator = new HtmlGenerator();
+}
+
 const genHtml = (markright, commandFuncs) => {
-  // Hasta que no veamos un null, el texto es 'inline'
+  // Hasta que no veamos un null, dispatcherexto es 'inline'
   // En el momento que vemos un null, entonces pasamos a usar '<p>' 
   let html = '', paragraph = '', lastWasText = false, inline = true;
   for (let node of markright) {
     if (typeof node === 'string') {
       if (commandFuncs && '<text>' in commandFuncs) {
-        node = commandFunds['<text>'](node)
+        node = commandFuncs['<text>'](node)
       }
       paragraph += (lastWasText ? '\n' : '') + node
     } else if (node == null) {
@@ -211,4 +307,5 @@ const genHtml = (markright, commandFuncs) => {
 module.exports = {
   parse,
   genHtml,
+  HtmlGenerator,
 }
