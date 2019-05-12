@@ -204,64 +204,52 @@ class Generator {
     this.push()
   }
 
+  get top() { return this.stack[this.pos] }
+  get paragraph() { return this.top.paragraph }
+  get doc() { return this.top.doc }
+  get context() { return this.stack.map(frame => frame.calling) }
   has(id) { return id in this }
+  in(ctx) { return this.context.filter(x => x === ctx).length > 0 }
+  add(item) { this.top.paragraph.push(item) }
 
   dispatch(id, node) {
     this.top.calling = id;
-    this[id](node)
+    this.paragraph.push(this[id](node))
   }
 
-  get context() { return this.stack.map(frame => frame.calling) }
-  in(ctx) { return this.context.filter(x => x === ctx).length > 0 }
-
   push() {
-    this.stack.push({
-      doc: '',
-      paragraph: '',
-      inline: true,
-      calling: null,
-    })
+    this.stack.push({ doc: [], paragraph: [], inline: true, calling: null })
     this.pos++
   }
 
   pop() {
     let result
     if (this.top.inline) {
-      result = this.top.paragraph
+      result = this.__paragraph__(this.top.paragraph)
     } else {
       if (this.top.paragraph.length > 0) {
-        this.top.doc += this.finishParagraph(this.top.paragraph)
+        this.top.doc.push(this.__paragraph__(this.top.paragraph))
       }
       result = this.top.doc
     }
     this.stack.pop()
     this.pos--
-    return result
+    return this.__doc__(result)
   }
 
-  get top() { return this.stack[this.pos] }
-  get paragraph() { return this.top.paragraph }
-  get doc() { return this.top.doc }
-
-  add(str) {
-    this.top.paragraph += str
-  }
-
-  __text__(text) {
-    this.add(text)
-  }
-
-  finishParagraph(paragraph) { return paragraph + '\n' }
+  __doc__(doc) { return doc.join('') }
+  __paragraph__(paragraph) { return paragraph.join('') + '\n' }
+  __text__(text) { this.add(text) }
 
   __null__() {
     this.top.inline = false
     if (this.top.paragraph) {
       // FIXME? 
-      // We can redefine finishParagraph to process the paragraph in some 
+      // We can redefine __paragraph__ to process the paragraph in some 
       // way before adding it to the document...
-      this.top.doc += this.finishParagraph(this.top.paragraph)
+      this.top.doc.push(this.__paragraph__(this.top.paragraph))
     }
-    this.top.paragraph = ''
+    this.top.paragraph = []
   }
 
   __command__(node) {
