@@ -205,9 +205,17 @@ class Generator {
   }
 
   get top() { return this.stack[this.pos] }
+
+  get inline()  { return this.top.inline }
+  set inline(x) { this.top.inline = x }
+
   get paragraph() { return this.top.paragraph }
+  set paragraph(p) { this.top.paragraph = p }
+
   get doc() { return this.top.doc }
   get context() { return this.stack.map(frame => frame.calling) }
+
+  
   has(id) { return id in this }
   in(ctx) { return this.context.filter(x => x === ctx).length > 0 }
   add(item) { this.top.paragraph.push(item) }
@@ -224,32 +232,32 @@ class Generator {
 
   pop() {
     let result
-    if (this.top.inline) {
-      result = this.__paragraph__(this.top.paragraph)
+    if (this.inline) {
+      result = this.__paragraph__(this.paragraph)
     } else {
-      if (this.top.paragraph.length > 0) {
-        this.top.doc.push(this.__paragraph__(this.top.paragraph))
+      if (this.paragraph.length > 0) {
+        this.doc.push(this.__paragraph__(this.paragraph))
       }
-      result = this.top.doc
+      result = this.__doc__(this.doc)
     }
     this.stack.pop()
     this.pos--
-    return this.__doc__(result)
+    return result
   }
 
-  __doc__(doc) { return doc.join('') }
-  __paragraph__(paragraph) { return paragraph.join('') + '\n' }
+  __doc__(doc) { return doc.join('\n') }
+  __paragraph__(paragraph) { return paragraph.join('') }
   __text__(text) { this.add(text) }
 
   __null__() {
-    this.top.inline = false
-    if (this.top.paragraph) {
+    this.inline = false
+    if (this.paragraph) {
       // FIXME? 
       // We can redefine __paragraph__ to process the paragraph in some 
       // way before adding it to the document...
-      this.top.doc.push(this.__paragraph__(this.top.paragraph))
+      this.doc.push(this.__paragraph__(this.paragraph))
     }
-    this.top.paragraph = []
+    this.paragraph = []
   }
 
   __command__(node) {
