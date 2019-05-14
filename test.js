@@ -89,6 +89,14 @@ const tests = [
   {
     input: '@{a}@{b}',
     output: '[{"id":"","children":["a"]},{"id":"","children":["b"]}]'
+  },
+  {
+    input: '@code{<script>}',
+    output: '[{"id":"code","children":["<script>"]}]'
+  },
+  {
+    input: '@code<{script}>',
+    output: '[{"id":"code","children":["{script}"]}]'
   }
 ]
 

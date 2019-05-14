@@ -62,16 +62,32 @@ class Parser {
   }
 
   parseOpenDelimiter() {
+    /*
+
+    Permitimos delimitadores que son repeticiones del mismo delimitador:
+    { {{ {{{ {{{{ ...
+    [ [[ [[[ [[[[ ...
+    < << <<< <<<< ...
+
+    Antes usaba un delimitador arbitrario usando cualquier combinación de los delimitadores
+    pero eso no permite escribir @code{<script>}, así que se permite repetición pero no mezcla.
+
+    */
     const D = "{}[]<>"
     const opD = [...D].filter((_, i) => i % 2 == 0).join('')
 
     const isOpenDelim = ch => opD.indexOf(ch) !== -1
     const makeInverseDelim = str => [...str].reverse().map(x => D[D.indexOf(x) + 1]).join('')
 
-    let delim = ''
-    while (isOpenDelim(this.curr())) {
-      delim += this.curr()
+    let first, delim = ''
+    if (isOpenDelim(this.curr())) {
+      first = this.curr()
+      delim += first
       this.next()
+      while (this.at(first)) {
+        delim += this.curr()
+        this.next()
+      }
     }
     return (delim.length === 0 ? null : {
       open: delim,
@@ -206,7 +222,7 @@ class Generator {
 
   get top() { return this.stack[this.pos] }
 
-  get inline()  { return this.top.inline }
+  get inline() { return this.top.inline }
   set inline(x) { this.top.inline = x }
 
   get paragraph() { return this.top.paragraph }
@@ -215,7 +231,7 @@ class Generator {
   get doc() { return this.top.doc }
   get context() { return this.stack.map(frame => frame.calling) }
 
-  
+
   has(id) { return id in this }
   in(ctx) { return this.context.filter(x => x === ctx).length > 0 }
   add(item) { this.top.paragraph.push(item) }
