@@ -1,6 +1,12 @@
 
 // TODO: Permitir una directiva que cambie el CONTROL_CHARACTER
-const CONTROL_CHARACTER = '@'
+const DEFAULT_CONTROL_CHARACTER = '@'
+const delimiters = "{}[]<>" // Tienen que estar por parejas!
+
+// Delimiters
+const openDelimiters = [...delimiters].filter((_, i) => i % 2 == 0).join('')
+const isOpenDelim = ch => (openDelimiters.indexOf(ch) !== -1)
+const closeDelimFor = str => [...str].reverse().map(x => delimiters[delimiters.indexOf(x) + 1]).join('')
 
 class Parser {
   constructor(input, commandFuncs) {
@@ -8,6 +14,14 @@ class Parser {
     this.commandFuncs = commandFuncs
     this.pos = 0
     this.lin = this.col = 1
+    this.controlChar = DEFAULT_CONTROL_CHARACTER;
+  }
+
+  setControlChar(ch) { 
+    if (ch.length != 1) {
+      this.error(`Wrong control character: '${ch}'`)
+    }
+    this.controlChar = ch; 
   }
 
   error(msg) { throw new Error(msg) }
@@ -18,14 +32,13 @@ class Parser {
 
   notAtSpace() { return this.ok() && !/\s/.test(this.curr()) }
 
-  next(n = 1) {
-    for (let i = 0; i < n; i++) {
+  next(N = 1) {
+    for (let i = 0; i < N; i++) {
       if (!this.ok()) {
-        return false
+        break
       }
       if (this.curr() == '\n') {
-        this.lin++
-        this.col = 1
+        this.lin++, this.col = 1
       } else {
         this.col++
       }
@@ -73,30 +86,23 @@ class Parser {
     pero eso no permite escribir @code{<script>}, así que se permite repetición pero no mezcla.
 
     */
-    const D = "{}[]<>"
-    const opD = [...D].filter((_, i) => i % 2 == 0).join('')
-
-    const isOpenDelim = ch => opD.indexOf(ch) !== -1
-    const makeInverseDelim = str => [...str].reverse().map(x => D[D.indexOf(x) + 1]).join('')
-
-    let first, delim = ''
-    if (isOpenDelim(this.curr())) {
-      first = this.curr()
+    let first = this.curr(), delim = ''
+    if (isOpenDelim(first)) {
       delim += first
       this.next()
       while (this.at(first)) {
-        delim += this.curr()
+        delim += first
         this.next()
       }
     }
     return (delim.length === 0 ? null : {
       open: delim,
-      close: makeInverseDelim(delim),
+      close: closeDelimFor(delim),
     })
   }
 
   parseCommand() {
-    this.expect(CONTROL_CHARACTER)
+    this.expect(DEFAULT_CONTROL_CHARACTER)
     let result = {}
     result.id = this.parseIdent()
     if (this.at('(')) {
@@ -139,11 +145,11 @@ class Parser {
       if (closeDelim && this.at(closeDelim)) {
         break
       }
-      if (this.at(CONTROL_CHARACTER + CONTROL_CHARACTER)) {
-        text += CONTROL_CHARACTER
+      if (this.at(this.controlChar + this.controlChar)) {
+        text += this.controlChar
         this.next(2)
       }
-      else if (this.at(CONTROL_CHARACTER)) {
+      else if (this.at(this.controlChar)) {
         addPendingText()
         let cmd = this.parseCommand()
         if (this.commandFuncs && cmd.id in this.commandFuncs) {
@@ -187,12 +193,19 @@ const parse = (str, commandFuncs) => {
   }
 }
 
+const isTextNode = (node) => {
+  return typeof node === 'string'
+}
+const isCommandNode = (node) => {
+  return typeof node === 'object' && 'id' in node && typeof node.id === 'string'
+}
+
 const walk = (markright, dispatcher) => {
   const invoke = (node, id, base) => {
     id = (id === '' ? '__empty__' : id)
-    if (dispatcher.has(id)) {
+    if (id in dispatcher) {
       dispatcher.dispatch(id, node)
-    } else if (dispatcher.has(base)) {
+    } else if (base in dispatcher) {
       dispatcher.dispatch(base, node)
     } else if ('__error__' in dispatcher) {
       dispatcher.dispatch('__error__', node)
@@ -231,8 +244,6 @@ class Generator {
   get doc() { return this.top.doc }
   get context() { return this.stack.map(frame => frame.calling) }
 
-
-  has(id) { return id in this }
   in(ctx) { return this.context.filter(x => x === ctx).length > 0 }
   add(item) { this.top.paragraph.push(item) }
 
@@ -287,7 +298,67 @@ class Generator {
   }
 }
 
+class JsonGenerator {
+  constructor() {
+    this.root = {};
+    this.cursor = this.root;
+  }
+
+  dispatch(id, node) {
+    return this[id](node)
+  }
+
+  __text__(t) { 
+    if (!/\s/.test(t)) {
+      throw Error(`JsonGenerator: text node within a command: '${t}'`); 
+    }
+  }
+
+  __number(node) {
+    if (!Array.isArray(node.children)) {
+      throw Error(`JsonGenerator: wrong Number node: no children`)
+    }
+    if (node.children.length != 1) {
+      throw Error(`JsonGenerator: wrong Number node: too many children`)
+    }
+    const num = Number(node.children[0]);
+    if (typeof num !== 'number') {
+      throw Error(`JsonGenerator: wrong Number node: child is not a number`)
+    }
+    return num
+  }
+
+  __command__(node) {
+    if (Array.isArray(node.args) && args.length > 0) {
+      throw Error(`JsonGenerator: cannot convert node '${JSON.stringify(node)}' since it has arguments.`)
+    }
+    if (node.children.length == 1 && isTextNode(node.children[0])) {
+      // Text nodes are handled here
+      this.cursor[node.id] = node.children[0]
+    } 
+    else if (node.children.length == 1 && isCommandNode(node.children[0]) && node.children[0].id == 'number') {
+      this.cursor[node.id] = this.__number(node.children[0])
+    }
+    else {
+      const savedCursor = this.cursor
+      this.cursor = {}
+      walk(node.children, this)
+      savedCursor[node.id] = this.cursor
+      this.cursor = savedCursor
+    }
+  }
+}
+
+const toJson = (markright) => {
+  const gen = new JsonGenerator()
+  walk(markright, gen)
+  return gen.root
+}
+
 module.exports = {
   parse,
   Generator,
+  isTextNode,
+  isCommandNode,
+  toJson,
 }

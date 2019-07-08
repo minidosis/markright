@@ -1,7 +1,7 @@
 
 const markright = require('./index.js')
 
-const tests = [
+const parseTests = [
   {
     input: '@a@b@c',
     output: `[{"id":"a"},{"id":"b"},{"id":"c"}]`
@@ -100,7 +100,8 @@ const tests = [
   }
 ]
 
-for (let test of tests) {
+// Parse tests
+for (let test of parseTests) {
   if (test.output) {
     const output = markright.parse(test.input)
     if (JSON.stringify(output) !== test.output) {
@@ -109,5 +110,31 @@ for (let test of tests) {
       console.log("Is     ", JSON.stringify(output))
       console.log()
     }
+  }
+}
+
+const jsonTests = [
+  {
+    input: `@person{@name{Max}@lastname{Morath}@age{@number{27}}}@foo{@bar{x}@baz{y}}`,
+    output: {
+      person: {
+        name: 'Max',
+        lastname: 'Morath',
+        age: 27,
+      },
+      foo: {
+        bar: 'x',
+        baz: 'y',
+      }
+    }
+  }
+]
+for (let test of jsonTests) {
+  const generated = markright.toJson(markright.parse(test.input))
+  const correct = test.output
+  if (JSON.stringify(generated) != JSON.stringify(correct)) {
+    console.log("Input   ", JSON.stringify(test.input))
+    console.log("Should  ", JSON.stringify(correct))
+    console.log("Is      ", JSON.stringify(generated))
   }
 }
