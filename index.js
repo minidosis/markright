@@ -14,7 +14,8 @@ class Parser {
     this.commandFuncs = commandFuncs
     this.pos = 0
     this.lin = this.col = 1
-    this.controlChar = DEFAULT_CONTROL_CHARACTER;
+    this.controlChar = DEFAULT_CONTROL_CHARACTER
+    this.stack = []
   }
 
   setControlChar(ch) { 
@@ -31,6 +32,18 @@ class Parser {
   at(str) { return this.input.slice(this.pos, this.pos + str.length) === str }
 
   notAtSpace() { return this.ok() && !/\s/.test(this.curr()) }
+
+  push(id) { this.stack.push(id) }
+  pop() { this.stack.pop() }
+  in(path) { 
+    const parts = path.split('/')
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[parts.length-1-i] != this.stack[this.stack.length-1-i]) {
+        return false
+      }
+    }
+    return true
+  }
 
   next(N = 1) {
     for (let i = 0; i < N; i++) {
@@ -103,23 +116,25 @@ class Parser {
 
   parseCommand() {
     this.expect(DEFAULT_CONTROL_CHARACTER)
-    let result = {}
-    result.id = this.parseIdent()
+    let command = {}
+    command.id = this.parseIdent()
     if (this.at('(')) {
       let args = this.parseArgs()
       if (args.length > 0) {
-        result.args = args
+        command.args = args
       }
     }
     let delim = this.parseOpenDelimiter();
     if (delim) {
+      this.push(command.id)
       let children = this.parse(delim.close)
       this.expect(delim.close)
       if (children.length > 0) {
-        result.children = children
+        command.children = children
       }
+      this.pop()
     }
-    return result
+    return command
   }
 
   parse(closeDelim) {
@@ -153,7 +168,7 @@ class Parser {
         addPendingText()
         let cmd = this.parseCommand()
         if (this.commandFuncs && cmd.id in this.commandFuncs) {
-          cmd = this.commandFuncs[cmd.id](cmd)
+          cmd = this.commandFuncs[cmd.id](cmd, this)
         }
         result.push(cmd)
         newline = false
@@ -184,20 +199,19 @@ class Parser {
 }
 
 const parse = (str, commandFuncs) => {
-  try {
-    const parser = new Parser(str, commandFuncs);
-    return parser.parse()
-  } catch (e) {
-    console.log("Error parsing markright:", e)
-    return { error: e }
-  }
+  const parser = new Parser(str, commandFuncs);
+  return parser.parse()
 }
 
 const isTextNode = (node) => {
   return typeof node === 'string'
 }
-const isCommandNode = (node) => {
-  return typeof node === 'object' && 'id' in node && typeof node.id === 'string'
+const isCommandNode = (node, id) => {
+  return typeof node === 'object' && 'id' in node && (
+    id === undefined 
+    ? typeof node.id === 'string'
+    : node.id == id
+  )
 }
 
 const walk = (markright, dispatcher) => {
@@ -328,13 +342,22 @@ class JsonGenerator {
     return num
   }
 
+  allTextNodes(children) {
+    for (let child of children) {
+      if (!isTextNode(child)) {
+        return false
+      }
+    }
+    return true
+  }
+
   __command__(node) {
     if (Array.isArray(node.args) && args.length > 0) {
       throw Error(`JsonGenerator: cannot convert node '${JSON.stringify(node)}' since it has arguments.`)
     }
-    if (node.children.length == 1 && isTextNode(node.children[0])) {
+    if (this.allTextNodes(node.children)) {
       // Text nodes are handled here
-      this.cursor[node.id] = node.children[0]
+      this.cursor[node.id] = node.children.join("")
     } 
     else if (node.children.length == 1 && isCommandNode(node.children[0]) && node.children[0].id == 'number') {
       this.cursor[node.id] = this.__number(node.children[0])

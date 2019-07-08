@@ -127,6 +127,17 @@ const jsonTests = [
         baz: 'y',
       }
     }
+  }, {
+    input: `@longtext{
+      bla
+      bla
+    }`,
+    output: {
+      longtext: `
+      bla
+      bla
+    `
+    },
   }
 ]
 for (let test of jsonTests) {
