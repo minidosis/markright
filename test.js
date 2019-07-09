@@ -97,6 +97,21 @@ const parseTests = [
   {
     input: '@code<{script}>',
     output: '[{"id":"code","children":["{script}"]}]'
+  },
+/*
+
+    Caso especial
+    -------------
+    Si justo después de un comando hay un '\n', entonces lo quitamos.
+    Si se necesita un '\n' al principio se pueden poner 2.
+
+*/
+  {
+
+    input: `@code[[[
+// some code
+]]]`,
+    output: '[{"id":"code","children":["// some code\\n"]}]'
   }
 ]
 
@@ -133,8 +148,8 @@ const jsonTests = [
       bla
     }`,
     output: {
-      longtext: `
-      bla
+      // Aquí se eplica el rollo del primer salto de línea...
+      longtext: `      bla
       bla
     `
     },

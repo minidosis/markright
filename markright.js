@@ -154,6 +154,12 @@ class Parser {
       text = '';
     }
 
+    const removeFirstNewlineIfExists = () => {
+      if (result.length > 0 && result[0] == '\n') {
+        result.splice(0, 1) // remove firest
+      }
+    }
+
     // TODO: Quitar líneas vacías del principio y del final
 
     while (this.ok()) {
@@ -194,6 +200,7 @@ class Parser {
       }
     }
     addPendingText()
+    removeFirstNewlineIfExists()
     return result
   }
 }
