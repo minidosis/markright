@@ -1,394 +1,310 @@
 
-// TODO: Permitir una directiva que cambie el CONTROL_CHARACTER
-const DEFAULT_CONTROL_CHARACTER = '@'
-const delimiters = "{}[]<>" // Tienen que estar por parejas!
+// TODO: Añadir posición en lin:col a los errores!
 
-// Delimiters
-const openDelimiters = [...delimiters].filter((_, i) => i % 2 == 0).join('')
-const isOpenDelim = ch => (openDelimiters.indexOf(ch) !== -1)
-const closeDelimFor = str => [...str].reverse().map(x => delimiters[delimiters.indexOf(x) + 1]).join('')
+const DEFAULT_CONTROL_CHARACTER = '@'
+const DELIMITERS = "{}[]<>" // Tienen que estar por parejas!
+const TAB_WIDTH = 2;
+
+const openDelimiters = [...DELIMITERS].filter((_, i) => i % 2 == 0).join('')
+const closeDelimFor = ch => DELIMITERS[DELIMITERS.indexOf(ch) + 1]
+
+const error = msg => { throw new Error(msg) }
+
+const allSpaces = str => str.match(/^\s*$/)
+
+const parseIndentation = str => {
+  let [_, space, line] = str.match(/^(\s*)(.*)$/)
+  if (space.length % 2 == 1) {
+    error(`Indentation is not a multiple of TAB_WIDTH (= ${TAB_WIDTH}): '${str}'`)
+  }
+  return { level: space.length / 2, line }
+}
+
+const getFullLineCommand = line => {
+  const m = line.match(/^@([a-z]+)(\((.*)\))?$/)
+  return m ? { id: m[1], args: m[3] } : null
+}
 
 class Parser {
-  constructor(input, commandFuncs) {
-    this.input = input
+  constructor(commandFuncs, controlChar = DEFAULT_CONTROL_CHARACTER) {
     this.commandFuncs = commandFuncs
-    this.pos = 0
-    this.lin = this.col = 1
-    this.controlChar = DEFAULT_CONTROL_CHARACTER
+    this.controlChar = controlChar
+  }
+
+  addToParent(x, level) {
+    const parent = this.stack[level]
+    if (parent.children === undefined) {
+      parent.children = []
+    }
+    if (x === null && parent.children.length == 0) {
+      return // Do not add null at the beginning
+    }
+    parent.children.push(x)
+  }
+
+  parseInlineCommand(text, i, closeDelim) {
+    let cmd = { cmd: '', inline: true }
+    const stopAt = " @()" + DELIMITERS
+    while (i < text.length && stopAt.indexOf(text[i]) == -1) {
+      cmd.cmd += text[i++]
+    }
+    if (text[i] == '(') {
+      cmd.args = []
+      let arg = ''
+      while (text[++i] != ')') {
+        if (i >= text.length) {
+          error(`End of string while parsing args`)
+        }
+        if (text[i] == ',') {
+          cmd.args.push(arg.trim())
+          arg = ''
+        } else {
+          arg += text[i]
+        }
+      }
+      cmd.args.push(arg.trim())
+      i++
+    }
+    let end = i
+    if (text.indexOf(closeDelim, i) != i && DELIMITERS.indexOf(text[i]) != -1) {
+      const delimChar = text[i];
+      if (openDelimiters.indexOf(delimChar) == -1) {
+        error(`Delimiter '${delimChar}' not allowed`)
+      }
+      cmd.delim = { open: delimChar }
+      i++
+      while (text[i] == delimChar) {
+        cmd.delim.open += text[i++]
+      }
+      cmd.delim.close = closeDelimFor(delimChar).repeat(cmd.delim.open.length)
+      let result = this.parseLine(text.slice(i), cmd.delim.close)
+      cmd.children = (Array.isArray(result.elems) ? result.elems : [result.elems])
+      i += result.end
+      if (text.indexOf(cmd.delim.close, i) != i) {
+        error(`Close delimiter for '${cmd.delim}' not found`)
+      }
+      end = i + cmd.delim.close.length
+    }
+    return { cmd, end }
+  }
+
+  parseLine(text, closeDelim) {
+    let elems = []
+    let curr = ''
+    let i = 0
+    while (i < text.length) {
+      if (text[i] == this.controlChar &&
+        (text[i + 1] == this.controlChar || i == text.length - 1 || text.indexOf(closeDelim, i + 1) == i + 1)) {
+        curr += this.controlChar
+        i += 2
+      }
+      else if (text.indexOf(closeDelim, i) == i) {
+        break
+      }
+      else if (text[i] == this.controlChar) {
+        if (curr) elems.push(curr), curr = ''
+        let { cmd, end } = this.parseInlineCommand(text, i + 1, closeDelim)
+        elems.push(cmd)
+        i = end
+      }
+      else {
+        curr += text[i]
+        i++
+      }
+    }
+    if (curr) elems.push(curr)
+    if (elems.length == 1) elems = elems[0]
+    return { elems, end: i }
+  }
+
+  parseCommand(cmd, level) {
+    const newobj = {
+      cmd: cmd.id,
+      args: (cmd.args ? cmd.args.split(',').map(x => x.trim()) : undefined)
+    }
+    if (level == this.stack.length - 1) {
+      this.stack.push(newobj)
+    } else {
+      this.stack[level + 1] = newobj
+      this.stack.slice(level + 2)
+    }
+    return newobj
+  }
+
+  parse(input) {
+    const lines = input.split('\n')
+    this.stack = [{ children: [] }]
+    let emptyLine = false
+    for (let ln of lines) {
+      if (allSpaces(ln)) {
+        emptyLine = true
+        continue
+      }
+      let { line, level } = parseIndentation(ln)
+      const cmd = getFullLineCommand(line)
+      if (level > this.stack.length - 1) {
+        if (cmd) {
+          error(`Indentation level too deep at: '${ln}'`)
+        } else {
+          // Accept text lines with excess indentation
+          level = this.stack.length - 1
+          line = ln.slice(2 * (this.stack.length - 1))
+        }
+      }
+      let newobj = (cmd
+        ? this.parseCommand(cmd, level)
+        : this.parseLine(line).elems
+      )
+      if (emptyLine) this.addToParent(null, level)
+      this.addToParent(newobj, level)
+      emptyLine = false
+    }
+    return this.stack[0].children
+  }
+}
+
+const _parser = new Parser();
+const parse = str => {
+  return _parser.parse(str)
+}
+
+class Walker {
+  constructor() {
     this.stack = []
   }
 
-  setControlChar(ch) { 
-    if (ch.length != 1) {
-      this.error(`Wrong control character: '${ch}'`)
+  $invoke(fnName, x) {
+    if (this[fnName]) {
+      this[fnName](x)
+      return true
     }
-    this.controlChar = ch; 
+    return false
   }
 
-  error(msg) { throw new Error(msg) }
-
-  ok() { return this.pos < this.input.length }
-  curr() { return this.input[this.pos] }
-  at(str) { return this.input.slice(this.pos, this.pos + str.length) === str }
-
-  notAtSpace() { return this.ok() && !/\s/.test(this.curr()) }
-
-  push(id) { this.stack.push(id) }
-  pop() { this.stack.pop() }
-  in(path) { 
-    const parts = path.split('/')
-    for (let i = 0; i < parts.length; i++) {
-      if (parts[parts.length-1-i] != this.stack[this.stack.length-1-i]) {
-        return false
-      }
-    }
-    return true
+  $in(...cmdNames) {
+    let i = 0
+    this.stack.forEach(c => {
+      if (c == cmdNames[i]) i++
+    })
+    return i === cmdNames.length;
   }
 
-  next(N = 1) {
-    for (let i = 0; i < N; i++) {
-      if (!this.ok()) {
-        break
-      }
-      if (this.curr() == '\n') {
-        this.lin++, this.col = 1
+  $line(elems) {
+    elems.forEach(x => {
+      if (x.cmd) {
+        this.$invoke(x.cmd, x)
       } else {
-        this.col++
+        this.$invoke('$text', x)
       }
-      this.pos++
-    }
-  }
-
-  expect(str) {
-    if (!this.ok() || !this.at(str)) {
-      this.error(`Expected '${str}'`);
-    }
-    this.next(str.length)
-  }
-
-  parseIdent() {
-    let start = this.pos
-    while (this.ok() && /[a-zA-Z0-9_]/.test(this.curr())) {
-      this.next()
-    }
-    return this.input.slice(start, this.pos)
-  }
-
-  parseArgs() {
-    this.expect('(')
-    let start = this.pos
-    let end = this.input.indexOf(')', start)
-    if (end === -1) {
-      this.error(`Parse error: missing closing parenthesis`)
-    }
-    let args = this.input.slice(start, end).split(',').map(x => x.trim()).filter(x => x.length > 0)
-    this.pos = end
-    this.expect(')')
-    return args
-  }
-
-  parseOpenDelimiter() {
-    /*
-
-    Permitimos delimitadores que son repeticiones del mismo delimitador:
-    { {{ {{{ {{{{ ...
-    [ [[ [[[ [[[[ ...
-    < << <<< <<<< ...
-
-    Antes usaba un delimitador arbitrario usando cualquier combinación de los delimitadores
-    pero eso no permite escribir @code{<script>}, así que se permite repetición pero no mezcla.
-
-    */
-    let first = this.curr(), delim = ''
-    if (isOpenDelim(first)) {
-      delim += first
-      this.next()
-      while (this.at(first)) {
-        delim += first
-        this.next()
-      }
-    }
-    return (delim.length === 0 ? null : {
-      open: delim,
-      close: closeDelimFor(delim),
     })
   }
 
-  parseCommand() {
-    this.expect(DEFAULT_CONTROL_CHARACTER)
-    let command = {}
-    command.id = this.parseIdent()
-    if (this.at('(')) {
-      let args = this.parseArgs()
-      if (args.length > 0) {
-        command.args = args
-      }
-    }
-    let delim = this.parseOpenDelimiter();
-    if (delim) {
-      this.push(command.id)
-      let children = this.parse(delim.close)
-      this.expect(delim.close)
-      if (children.length > 0) {
-        command.children = children
-      }
-      this.pop()
-    }
-    return command
-  }
-
-  parse(closeDelim) {
-    let result = []
-    let text = '';
-    let newline = false;
-
-    const lastIsCommand = () => {
-      const i = result.length - 1;
-      return i >= 0 && result[i] !== null && typeof result[i] === 'object';
-    }
-
-    const addPendingText = () => {
-      if (text.length > 0) {
-        result.push(text)
-      }
-      text = '';
-    }
-
-    const removeFirstNewlineIfExists = () => {
-      if (result.length > 0 && result[0] == '\n') {
-        result.splice(0, 1) // remove firest
-      }
-    }
-
-    // TODO: Quitar líneas vacías del principio y del final
-
-    while (this.ok()) {
-      if (closeDelim && this.at(closeDelim)) {
-        break
-      }
-      if (this.at(this.controlChar + this.controlChar)) {
-        text += this.controlChar
-        this.next(2)
-      }
-      else if (this.at(this.controlChar)) {
-        addPendingText()
-        let cmd = this.parseCommand()
-        if (this.commandFuncs && cmd.id in this.commandFuncs) {
-          cmd = this.commandFuncs[cmd.id](cmd, this)
+  $walk(mr) {
+    if (mr) {
+      mr.forEach(x => {
+        if (x === null) {
+          this.$invoke('$null')
         }
-        result.push(cmd)
-        newline = false
-      }
-      else if (this.at('\n')) {
-        text += '\n'
-        this.next()
-        const allSpaces = /^\s*$/.test(text)
-        if (allSpaces && newline) {
-          result.push(null)
-          text = ''
-        } else {
-          addPendingText()
+        else if (x.cmd) {
+          this.stack.push(x.cmd)
+          if (!this.$invoke(x.cmd, x)) {
+            this.$invoke('$command', x)
+          }
+          this.stack.pop()
         }
-        newline = true;
-        if (this.notAtSpace() && lastIsCommand()) {
-          // Meter un espacio entre un comando a final de línea y el texto que le sigue
-          text += ' '
+        else if (typeof x === 'string') {
+          this.$invoke('$text', x)
         }
-      } else {
-        text += this.curr()
-        this.next()
+        else if (Array.isArray(x)) {
+          this.stack.push('$line')
+          this.$invoke('$line', x)
+          this.stack.pop();
+        }
+      })
+    }
+  }
+}
+
+class Stringifier extends Walker {
+  constructor(output) {
+    super()
+    this.out = output
+    this.level = 0
+    this.beginl = true
+    this.inline = []
+  }
+
+  $$endl() {
+    if (!this.beginl) {
+      this.out.write(`\n`)
+      this.beginl = true
+    }
+  }
+
+  $$inline() {
+    return this.inline.length > 0 && 
+           this.inline[this.inline.length-1]
+  }
+  $$pushInline(x) { this.inline.push(x) }
+  $$popInline() { this.inline.pop() }
+
+  $$break() {
+    if (!(this.$in('$line') || this.$$inline())) {
+      this.$$endl()
+    }    
+  }
+
+  $$write(x) {
+    if (this.beginl) {
+      this.out.write(' '.repeat(this.level * 2))
+    }
+    this.out.write(x)
+    this.beginl = false;
+  }
+
+  $null() {
+    this.out.write('\n')
+    this.beginl = true
+  }
+
+  $line(elems) {
+    this.$walk(elems)
+    this.$$break()
+  }
+
+  $text(text) {
+    this.$$write(text)
+    this.$$break()
+  }
+
+  $command(cmd) {
+    const id = cmd.cmd;
+    const args = (cmd.args ? `(${cmd.args.join(', ')})` : '')
+    this.$$pushInline(cmd.inline)
+    this.$$write('@' + id + args)
+    if (this.$$inline() || this.$in('$line')) {
+      if (cmd.children) {
+        this.$$write(cmd.delim.open)
+        this.$walk(cmd.children)
+        this.$$write(cmd.delim.close)
       }
-    }
-    addPendingText()
-    removeFirstNewlineIfExists()
-    return result
-  }
-}
-
-const parse = (str, commandFuncs) => {
-  const parser = new Parser(str, commandFuncs);
-  return parser.parse()
-}
-
-const isTextNode = (node) => {
-  return typeof node === 'string'
-}
-const isCommandNode = (node, id) => {
-  return typeof node === 'object' && 'id' in node && (
-    id === undefined 
-    ? typeof node.id === 'string'
-    : node.id == id
-  )
-}
-
-const walk = (markright, dispatcher) => {
-  const invoke = (node, id, base) => {
-    id = (id === '' ? '__empty__' : id)
-    if (id in dispatcher) {
-      dispatcher.dispatch(id, node)
-    } else if (base in dispatcher) {
-      dispatcher.dispatch(base, node)
-    } else if ('__error__' in dispatcher) {
-      dispatcher.dispatch('__error__', node)
-    } else {
-      throw new Error(`markright.walk: no dispatcher available for ${id}`)
-    }
-  }
-  return markright.map(node => {
-    if (typeof node === 'string') {
-      invoke(node, '__text__')
-    } else if (node === null) {
-      invoke(node, '__null__')
-    } else if (typeof node === 'object') {
-      invoke(node, node.id, '__command__')
-    } else {
-      throw new Error(`markright.walk: Unrecognized type of node (${node})`)
-    }
-  })
-}
-
-class Generator {
-  constructor() {
-    this.stack = []
-    this.pos = -1
-    this.push()
-  }
-
-  get top() { return this.stack[this.pos] }
-
-  get inline() { return this.top.inline }
-  set inline(x) { this.top.inline = x }
-
-  get paragraph() { return this.top.paragraph }
-  set paragraph(p) { this.top.paragraph = p }
-
-  get doc() { return this.top.doc }
-  get context() { return this.stack.map(frame => frame.calling) }
-
-  in(ctx) { return this.context.filter(x => x === ctx).length > 0 }
-  add(item) { this.top.paragraph.push(item) }
-
-  dispatch(id, node) {
-    this.top.calling = id;
-    this.paragraph.push(this[id](node))
-  }
-
-  push() {
-    this.stack.push({ doc: [], paragraph: [], inline: true, calling: null })
-    this.pos++
-  }
-
-  pop() {
-    let result
-    if (this.inline) {
-      result = this.__paragraph__(this.paragraph)
-    } else {
-      if (this.paragraph.length > 0) {
-        this.doc.push(this.__paragraph__(this.paragraph))
-      }
-      result = this.__doc__(this.doc)
-    }
-    this.stack.pop()
-    this.pos--
-    return result
-  }
-
-  __doc__(doc) { return doc.join('\n') }
-  __paragraph__(paragraph) { return paragraph.join('') }
-  __text__(text) { this.add(text) }
-
-  __null__() {
-    this.inline = false
-    if (this.paragraph) {
-      // FIXME? 
-      // We can redefine __paragraph__ to process the paragraph in some 
-      // way before adding it to the document...
-      this.doc.push(this.__paragraph__(this.paragraph))
-    }
-    this.paragraph = []
-  }
-
-  __command__(node) {
-    this.add(`@error{Command "${node.id}" not found}`)
-  }
-
-  generate(markright) {
-    this.push()
-    walk(markright, this)
-    return this.pop()
-  }
-}
-
-class JsonGenerator {
-  constructor() {
-    this.root = {};
-    this.cursor = this.root;
-  }
-
-  dispatch(id, node) {
-    return this[id](node)
-  }
-
-  __text__(t) { 
-    if (!/\s/.test(t)) {
-      throw Error(`JsonGenerator: text node within a command: '${t}'`); 
-    }
-  }
-
-  __number(node) {
-    if (!Array.isArray(node.children)) {
-      throw Error(`JsonGenerator: wrong Number node: no children`)
-    }
-    if (node.children.length != 1) {
-      throw Error(`JsonGenerator: wrong Number node: too many children`)
-    }
-    const num = Number(node.children[0]);
-    if (typeof num !== 'number') {
-      throw Error(`JsonGenerator: wrong Number node: child is not a number`)
-    }
-    return num
-  }
-
-  allTextNodes(children) {
-    for (let child of children) {
-      if (!isTextNode(child)) {
-        return false
-      }
-    }
-    return true
-  }
-
-  __command__(node) {
-    if (Array.isArray(node.args) && args.length > 0) {
-      throw Error(`JsonGenerator: cannot convert node '${JSON.stringify(node)}' since it has arguments.`)
-    }
-    if (this.allTextNodes(node.children)) {
-      // Text nodes are handled here
-      this.cursor[node.id] = node.children.join("")
-    } 
-    else if (node.children.length == 1 && isCommandNode(node.children[0]) && node.children[0].id == 'number') {
-      this.cursor[node.id] = this.__number(node.children[0])
     }
     else {
-      const savedCursor = this.cursor
-      this.cursor = {}
-      walk(node.children, this)
-      savedCursor[node.id] = this.cursor
-      this.cursor = savedCursor
+      this.$$endl()
+      if (cmd.children) {
+        this.level++
+        this.$walk(cmd.children)
+        this.level--
+      }
     }
+    this.$$popInline()
+    this.$$break()
   }
-}
-
-const toJson = (markright) => {
-  const gen = new JsonGenerator()
-  walk(markright, gen)
-  return gen.root
 }
 
 module.exports = {
+  Parser,
   parse,
-  Generator,
-  isTextNode,
-  isCommandNode,
-  toJson,
+  Walker,
+  Stringifier,
 }

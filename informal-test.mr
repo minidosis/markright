@@ -1,0 +1,23 @@
+@member(c, d, e){laksdf @boo(a  ,   b){@yeye xxx @y} fj12 312321}
+a @b @c @d{@e(x,y,z){@f(f,f){@g(g){@h{@i}}}}} e
+
+@abc
+  This is a normal line @bla<<<<{}<>[]>>>>
+  Another line
+
+@cba
+  Bla bla bla
+
+@cdef(a,      b,      sdfsdfc   )
+  ASDFSXCVSDF
+  @fistrol(xyt)
+    A
+    @hola
+      y @uio @poi yay
+      yay yay
+    @adeu
+      z
+  @yay
+
+@struct
+  @member(a, b, c){asldkfjlaksdjf}

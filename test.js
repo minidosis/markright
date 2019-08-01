@@ -1,166 +1,118 @@
 
-const markright = require('./index.js')
+const markright = require('./markright')
 
-const parseTests = [
+const tests = [
   {
-    input: '@a@b@c',
-    output: `[{"id":"a"},{"id":"b"},{"id":"c"}]`
+    input: `@something`,
+    output: '[{"cmd":"something"}]'
   },
   {
-    input: '@a@@@b',
-    output: `[{"id":"a"},"@",{"id":"b"}]`
+    input: `@a@b@c`,
+    output: '[[{"cmd":"a"},{"cmd":"b"},{"cmd":"c"}]]'
   },
   {
-    input: `abc@d efg`,
-    output: `["abc",{"id":"d"}," efg"]`
+    input: `@a  @b@c`,
+    output: '[[{"cmd":"a"},"  ",{"cmd":"b"},{"cmd":"c"}]]'
   },
   {
-    input: `abc@d{}efg`,
-    output: `["abc",{"id":"d"},"efg"]`
+    input: `@a @b @c`,
+    output: '[[{"cmd":"a"}," ",{"cmd":"b"}," ",{"cmd":"c"}]]'
   },
   {
-    input: 'abc@d{efg}hij',
-    output: `["abc",{"id":"d","children":["efg"]},"hij"]`
+    input: `some text@a @b @c`,
+    output: '[["some text",{"cmd":"a"}," ",{"cmd":"b"}," ",{"cmd":"c"}]]'
   },
   {
-    input: 'abc@x(y,z){efg}hij',
-    output: `["abc",{"id":"x","args":["y","z"],"children":["efg"]},"hij"]`
+    input: `@a@b@c
+@d@e`,
+    output: '[[{"cmd":"a"},{"cmd":"b"},{"cmd":"c"}],[{"cmd":"d"},{"cmd":"e"}]]'
   },
   {
-    input: 'abc\ndef',
-    output: '["abc\\n","def"]'
+    input: `
+@mycmd(a ,  b ,  c  )
+  Text inside
+`,
+    output: '[{"cmd":"mycmd","args":["a","b","c"],"children":["Text inside"]}]'
   },
   {
-    input: 'abc\n\ndef',
-    output: '["abc\\n",null,"def"]'
-  },
+    input: `
+@mycmd( a =  3 , b... ,  + +c + + )
+  blis blas blus
+`,
+    output: '[{"cmd":"mycmd","args":["a =  3","b...","+ +c + +"],"children":["blis blas blus"]}]'
+  },  
   {
-    input: 'abc\n\n\ndef',
-    output: '["abc\\n",null,null,"def"]'
-  },
-  {
-    input: 'abc\n\n\n\ndef',
-    output: '["abc\\n",null,null,null,"def"]'
-  },
-  {
-    input: 'abc\n    \ndef',
-    output: '["abc\\n",null,"def"]'
-  },
-  {
-    input: 'abc\n    \ndef\n    \nghi',
-    output: '["abc\\n",null,"def\\n",null,"ghi"]'
-  },
-  {
-    input: 'abc\n    \ndef\n    \nghi\n',
-    output: '["abc\\n",null,"def\\n",null,"ghi\\n"]'
-  },
-  {
-    input: 'a a a a \nb\n\nd\ne@xxx(1, 2, 3){a\n\nb}\n',
-    output: `["a a a a \\n","b\\n",null,"d\\n","e",{"id":"xxx","args":["1","2","3"],"children":["a\\n",null,"b"]},"\\n"]`
-  },
-  {
-    input: '@code{int @main()<<< int a = 1; >>>}',
-    output: '[{"id":"code","children":["int ",{"id":"main","children":[" int a = 1; "]}]}]'
-  },
-  {
-    input: '@code<<<int main() { int a = 1; }>>>',
-    output: '[{"id":"code","children":["int main() { int a = 1; }"]}]'
-  },
-  {
-    input: '@code<<<@@include <iostream>;\nusing namespace std;\n\nint main() { cout << "hi"; }>>>',
-    output: '[{"id":"code","children":["@include <iostream>;\\n","using namespace std;\\n",null,"int main() { cout << \\"hi\\"; }"]}]'
-  },
-  {
-    input: 'abc\n@d{e}\n',
-    output: '["abc\\n",{"id":"d","children":["e"]},"\\n"]'
-  },
-  {
-    input: 'abc\n\n@d{e}\n',
-    output: '["abc\\n",null,{"id":"d","children":["e"]},"\\n"]'
-  },
-  {
-    input: 'abc @d{e}\nfgh',
-    output: '["abc ",{"id":"d","children":["e"]},"\\n","fgh"]'
-  },
-  {
-    input: 'a@{}b',
-    output: '["a",{"id":""},"b"]'
-  },
-  {
-    input: '@{a}@{b}',
-    output: '[{"id":"","children":["a"]},{"id":"","children":["b"]}]'
-  },
-  {
-    input: '@code{<script>}',
-    output: '[{"id":"code","children":["<script>"]}]'
-  },
-  {
-    input: '@code<{script}>',
-    output: '[{"id":"code","children":["{script}"]}]'
-  },
-/*
+    input:  `
 
-    Caso especial
-    -------------
-    Si justo después de un comando hay un '\n', entonces lo quitamos.
-    Si se necesita un '\n' al principio se pueden poner 2.
-
-*/
+@eat-empty-lines-at-the-beginning
+`,
+    output: '[{"cmd":"eat-empty-lines-at-the-beginning"}]'
+  },
   {
+    input:  `
+@something
+  
+  Also eat the first null child
+`,
+    output: '[{"cmd":"something","children":["Also eat the first null child"]}]'
+  },
+  {
+    input: `
+@main
+  @a
+  @b
+  @c
+`,
+    output: '[{"cmd":"main","children":[{"cmd":"a"},{"cmd":"b"},{"cmd":"c"}]}]'
+  },
+  {
+    input: `
+@main
+  a
+  b
+  c
+`,
+    output: '[{"cmd":"main","children":["a","b","c"]}]'
+  },
+  {
+    input: `
+@main
+  abc
 
-    input: `@code[[[
-// some code
-]]]`,
-    output: '[{"id":"code","children":["// some code\\n"]}]'
+  def
+`,
+    output: '[{"cmd":"main","children":["abc",null,"def"]}]'
+  },
+  {
+    input: `
+@command
+  1st
+    2nd
+  3rd`,
+    output: '[{"cmd":"command","children":["1st","  2nd","3rd"]}]'
+  },
+  {
+    input: `
+@command
+    1st
+    2nd
+  3rd`,
+    output: '[{"cmd":"command","children":["  1st","  2nd","3rd"]}]'
+  },
+  {
+    input: '@a{[]}@b[{}]',
+    output: '[[{"cmd":"a","children":["[]"]},{"cmd":"b","children":["{}"]}]]'
   }
 ]
 
-// Parse tests
-for (let test of parseTests) {
-  if (test.output) {
-    const output = markright.parse(test.input)
-    if (JSON.stringify(output) !== test.output) {
-      console.log("Input  ", JSON.stringify(test.input))
-      console.log("Should ", test.output)
-      console.log("Is     ", JSON.stringify(output))
-      console.log()
-    }
-  }
-}
+// TODO: Stringifier tests
 
-const jsonTests = [
-  {
-    input: `@person{@name{Max}@lastname{Morath}@age{@number{27}}}@foo{@bar{x}@baz{y}}`,
-    output: {
-      person: {
-        name: 'Max',
-        lastname: 'Morath',
-        age: 27,
-      },
-      foo: {
-        bar: 'x',
-        baz: 'y',
-      }
-    }
-  }, {
-    input: `@longtext{
-      bla
-      bla
-    }`,
-    output: {
-      // Aquí se eplica el rollo del primer salto de línea...
-      longtext: `      bla
-      bla
-    `
-    },
-  }
-]
-for (let test of jsonTests) {
-  const generated = markright.toJson(markright.parse(test.input))
-  const correct = test.output
-  if (JSON.stringify(generated) != JSON.stringify(correct)) {
-    console.log("Input   ", JSON.stringify(test.input))
-    console.log("Should  ", JSON.stringify(correct))
-    console.log("Is      ", JSON.stringify(generated))
+for (let test of tests) {
+  const output = markright.parse(test.input)
+  if (JSON.stringify(output) != test.output) {
+    console.log("Input  ", JSON.stringify(test.input))
+    console.log("Should ", test.output)
+    console.log("Is     ", JSON.stringify(output))
+    console.log()
   }
 }
