@@ -199,28 +199,34 @@ class Walker {
     })
   }
 
+  $walkElem(x) {
+    if (x === null) {
+      this.$invoke('$null')
+    }
+    else if (x.cmd) {
+      this.stack.push(x.cmd)
+      if (!this.$invoke(x.cmd, x)) {
+        this.$invoke('$command', x)
+      }
+      this.stack.pop()
+    }
+    else if (typeof x === 'string') {
+      this.$invoke('$text', x)
+    }
+    else if (Array.isArray(x)) {
+      this.stack.push('$line')
+      this.$invoke('$line', x)
+      this.stack.pop();
+    }
+  }
+
   $walk(mr) {
     if (mr) {
-      mr.forEach(x => {
-        if (x === null) {
-          this.$invoke('$null')
-        }
-        else if (x.cmd) {
-          this.stack.push(x.cmd)
-          if (!this.$invoke(x.cmd, x)) {
-            this.$invoke('$command', x)
-          }
-          this.stack.pop()
-        }
-        else if (typeof x === 'string') {
-          this.$invoke('$text', x)
-        }
-        else if (Array.isArray(x)) {
-          this.stack.push('$line')
-          this.$invoke('$line', x)
-          this.stack.pop();
-        }
-      })
+      if (Array.isArray(mr)) {
+        mr.forEach(this.$walkElem.bind(this))
+      } else {
+        this.$walkElem(mr)
+      }
     }
   }
 }
