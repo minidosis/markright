@@ -44,9 +44,9 @@ const tests = [
   {
     input:  `
 
-@eat-empty-lines-at-the-beginning
+@eatemptylinesatthebeginning
 `,
-    output: '[{"cmd":"eat-empty-lines-at-the-beginning"}]'
+    output: '[{"cmd":"eatemptylinesatthebeginning"}]'
   },
   {
     input:  `

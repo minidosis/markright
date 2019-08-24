@@ -81,7 +81,7 @@ class Parser {
       cmd.children = (Array.isArray(result.elems) ? result.elems : [result.elems])
       i += result.end
       if (text.indexOf(cmd.delim.close, i) != i) {
-        error(`Close delimiter for '${cmd.delim}' not found`)
+        error(`Close delimiter for '${cmd.delim.open}' not found`)
       }
       end = i + cmd.delim.close.length
     }
@@ -126,7 +126,7 @@ class Parser {
       this.stack.push(newobj)
     } else {
       this.stack[level + 1] = newobj
-      this.stack.slice(level + 2)
+      // this.stack.slice(level + 2)
     }
     return newobj
   }
