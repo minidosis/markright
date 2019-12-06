@@ -8,24 +8,24 @@ const tests = [
   },
   {
     input: `@a@b@c`,
-    output: '[[{"cmd":"a"},{"cmd":"b"},{"cmd":"c"}]]'
+    output: '[[{"cmd":"a","inline":true},{"cmd":"b","inline":true},{"cmd":"c","inline":true}]]'
   },
   {
     input: `@a  @b@c`,
-    output: '[[{"cmd":"a"},"  ",{"cmd":"b"},{"cmd":"c"}]]'
+    output: '[[{"cmd":"a","inline":true},"  ",{"cmd":"b","inline":true},{"cmd":"c","inline":true}]]'
   },
   {
     input: `@a @b @c`,
-    output: '[[{"cmd":"a"}," ",{"cmd":"b"}," ",{"cmd":"c"}]]'
+    output: '[[{"cmd":"a","inline":true}," ",{"cmd":"b","inline":true}," ",{"cmd":"c","inline":true}]]'
   },
   {
     input: `some text@a @b @c`,
-    output: '[["some text",{"cmd":"a"}," ",{"cmd":"b"}," ",{"cmd":"c"}]]'
+    output: '[["some text",{"cmd":"a","inline":true}," ",{"cmd":"b","inline":true}," ",{"cmd":"c","inline":true}]]'
   },
   {
     input: `@a@b@c
 @d@e`,
-    output: '[[{"cmd":"a"},{"cmd":"b"},{"cmd":"c"}],[{"cmd":"d"},{"cmd":"e"}]]'
+    output: '[[{"cmd":"a","inline":true},{"cmd":"b","inline":true},{"cmd":"c","inline":true}],[{"cmd":"d","inline":true},{"cmd":"e","inline":true}]]'
   },
   {
     input: `
@@ -100,8 +100,12 @@ const tests = [
     output: '[{"cmd":"command","children":["  1st","  2nd","3rd"]}]'
   },
   {
-    input: '@a{[]}@b[{}]',
-    output: '[[{"cmd":"a","children":["[]"]},{"cmd":"b","children":["{}"]}]]'
+    input: `@a{[]}@b[{}]`,
+    output: '[[{"cmd":"a","inline":true,"delim":{"open":"{","close":"}"},"children":["[]"]},{"cmd":"b","inline":true,"delim":{"open":"[","close":"]"},"children":["{}"]}]]'
+  },
+  {
+    input: `@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>`,
+    output: '[[{"cmd":"a","inline":true,"delim":{"open":"<","close":">"},"children":["A"]},{"cmd":"b","inline":true,"delim":{"open":"<<","close":">>"},"children":["B"]},{"cmd":"c","inline":true,"delim":{"open":"<<<","close":">>>"},"children":["C"]},{"cmd":"d","inline":true,"delim":{"open":"<<<<","close":">>>>"},"children":["D"]}]]'
   }
 ]
 
