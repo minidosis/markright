@@ -105,7 +105,11 @@ const tests = [
   },
   {
     input: `@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>`,
-    output: '[[{"cmd":"a","inline":true,"delim":{"open":"<","close":">"},"children":["A"]},{"cmd":"b","inline":true,"delim":{"open":"<<","close":">>"},"children":["B"]},{"cmd":"c","inline":true,"delim":{"open":"<<<","close":">>>"},"children":["C"]},{"cmd":"d","inline":true,"delim":{"open":"<<<<","close":">>>>"},"children":["D"]}]]'
+    output: '[[' + '{"cmd":"a","inline":true,"delim":{"open":"<","close":">"},"children":["A"]},' + 
+                   '{"cmd":"b","inline":true,"delim":{"open":"<<","close":">>"},"children":["B"]},' +
+                   '{"cmd":"c","inline":true,"delim":{"open":"<<<","close":">>>"},"children":["C"]},' + 
+                   '{"cmd":"d","inline":true,"delim":{"open":"<<<<","close":">>>>"},"children":["D"]}' + 
+            ']]'
   }
 ]
 
