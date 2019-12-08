@@ -34,7 +34,6 @@ const allSpaces = line => {
 }
 
 const emptyLine = line => line === '' || allSpaces(line)
-const nonEmptyLine = line => !emptyLine(line)
 
 const isOpenDelim = ch => openDelimiters.indexOf(ch) !== -1
 const isCloseDelim = ch => closeDelimiters.indexOf(ch) !== -1
@@ -199,5 +198,6 @@ const parseFile = (filename, funcMap) => {
 
 module.exports = {
   parse,
+  parseLine,
   parseFile,
 }
