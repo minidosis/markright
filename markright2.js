@@ -200,4 +200,5 @@ module.exports = {
   parse,
   parseLine,
   parseFile,
+  Command
 }

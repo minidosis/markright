@@ -1,0 +1,8 @@
+@test
+  @input{@something}
+  @output{Cmd("something")}
+
+@test
+  @input{@a@b@c}
+  @output{Line(Cmd("a")Cmd("b")Cmd("c"))}
+
