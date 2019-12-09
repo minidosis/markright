@@ -92,7 +92,7 @@ const parseLine = (line) => {
     }
     const start = i
     const closeDelimStr = matchingDelimiter(openCh).repeat(width)
-    let end = line.indexOf(closeDelimStr)
+    let end = line.indexOf(closeDelimStr, start)
     if (end === -1) {
       throw new Error(`Expected '${closeDelimStr}`)
     }
@@ -134,7 +134,7 @@ const parseLine = (line) => {
       }
     }
   }
-  if (text) {
+  if (!allSpaces(text)) {
     result.push(text)
   }
   return result
