@@ -208,3 +208,26 @@
 
   @output
     @a`Line(1)`@b`Line(2)`Line()@c`Line(3)Line()`Line()@d`Line(4)`
+
+@test(25)
+  @input
+    @a
+      1
+
+
+
+    @b
+
+  @output
+    @a`Line(1)Line()Line()`Line()@b
+
+
+@test(25)
+  @input
+    @a
+
+
+    @b
+
+  @output
+    @aLine()Line()@b

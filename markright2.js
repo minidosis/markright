@@ -185,7 +185,15 @@ const parse = (lines, funcMap) => {
     if (emptyLine(line)) {
       // We don't know now where this empty line should go.
       // We will know it when we see the indentation in the next line.
-      // FIXME?? -> This makes it impossible to have several empty lines?
+      if (pendingEmptyLine) {
+        // But: to allow for empty lines at the end, we add any repeated empty
+        //      lines at the end of the current command (only if there is already some content!)
+        if (command !== null && Array.isArray(command.body)) {
+          command.push([])
+        } else {
+          result.push([])
+        }
+      }
       pendingEmptyLine = true
       continue
     }
@@ -222,6 +230,9 @@ const parse = (lines, funcMap) => {
     } else {
       result.push(items.map(execIfCommand))
     }
+  }
+  if (pendingEmptyLine) {
+    result.push([])
   }
   return result.map(execIfCommand)
 }
