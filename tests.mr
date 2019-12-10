@@ -149,6 +149,7 @@
   @output
     @a`@b`@c``
 
+
 @test(20)
   @input
     first
@@ -156,3 +157,54 @@
     third
   @output
     Line(first)Line()Line(third)
+
+@test(21)
+  @input
+    @first
+      1
+
+    @second
+      2
+
+  @output
+    @first`Line(1)`Line()@second`Line(2)`
+
+@test(22)
+  @input
+    @a
+      @b
+        @c
+      @d
+        @e
+          @f
+  @output
+    @a`@b`@c`@d`@e`@f```
+
+@test(23)
+  @input
+    @code
+      #include<iostream>
+      using namespace std;
+
+      int main() {
+        cout << "hi" << endl;
+      }
+  @output
+    @code`Line(#include<iostream>)Line(using namespace std;)Line()Line(int main() {)Line(  cout << "hi" << endl;)Line(})`
+
+@test(24)
+  @input
+    @a
+      1
+    @b
+      2
+
+    @c
+      3
+
+    
+    @d
+      4
+
+  @output
+    @a`Line(1)`@b`Line(2)`Line()@c`Line(3)Line()`Line()@d`Line(4)`

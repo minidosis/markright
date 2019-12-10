@@ -185,6 +185,7 @@ const parse = (lines, funcMap) => {
     if (emptyLine(line)) {
       // We don't know now where this empty line should go.
       // We will know it when we see the indentation in the next line.
+      // FIXME?? -> This makes it impossible to have several empty lines?
       pendingEmptyLine = true
       continue
     }
