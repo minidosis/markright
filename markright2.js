@@ -27,8 +27,13 @@ class Command {
 }
 
 const allSpaces = line => {
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] !== ' ') return false;
+  try {
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] !== ' ') return false;
+    }
+  }
+  catch (e) {
+    console.log('catch!')
   }
   return true;
 }
@@ -143,15 +148,33 @@ const parseLine = (line) => {
 const parse = (lines, funcMap) => {
   const result = []
   let command = null
+  let pendingEmptyLine = false
 
   const execIfCommand = item => {
-    if (item !== null && item.constructor === Command) {
-      const fn = funcMap && funcMap[item.name]
+    let cmd = item
+    if (Array.isArray(item) && item.length === 1) {
+      cmd = item[0]
+    }
+    if (cmd !== null && cmd.constructor === Command) {
+      const fn = funcMap && funcMap[cmd.name]
       if (fn !== undefined) {
         if (typeof fn !== 'function') {
-          throw new Error(`Command '${item.name}' is not a function`)
+          throw new Error(`Command '${cmd.name}' is not a function`)
         }
-        return fn(item.args, item.body)
+        return fn(cmd.args, cmd.body)
+      } else {
+        // If there is no registered command, we parse recursively...
+        if (cmd.body) {
+          switch (cmd.body.constructor) {
+            case Array:
+              cmd.body = parse(cmd.body, funcMap)
+              break;
+            case String:
+              cmd.body = parseLine(cmd.body, funcMap)
+              break;
+          }
+        }
+        return cmd
       }
     }
     return item;
@@ -160,31 +183,42 @@ const parse = (lines, funcMap) => {
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i]
     if (emptyLine(line)) {
-      result.push(null)
+      // We don't know now where this empty line should go.
+      // We will know it when we see the indentation in the next line.
+      pendingEmptyLine = true
       continue
     }
     const indent = indentation(line)
     if (indent > 0) {
       if (command === null) {
-        throw Error(`${i}:${indent}: wrong indentation`)
+        result.push(parseLine(line).map(execIfCommand))
+        // throw Error(`${i}:${indent}: wrong indentation`)
+      } else {
+        if (pendingEmptyLine) {
+          command.push([])
+          pendingEmptyLine = false
+        }
+        command.push(line.slice(2))
       }
-      command.push(line.slice(2))
       continue
     }
-    line = line.slice(indent)
-    if (line[indent] !== commandChar) {
+    if (pendingEmptyLine) {
+      result.push([])
+      pendingEmptyLine = false
+    }
+    if (line[0] !== commandChar) {
       command = null
       result.push(parseLine(line).map(execIfCommand))
       continue
     }
+    command = null
     const items = parseLine(line)
     if (items.length === 1) {
       if (items[0].body === undefined) {
         command = items[0]
       }
-      result.push(items[0])
+      result.push(items)
     } else {
-      command = null
       result.push(items.map(execIfCommand))
     }
   }

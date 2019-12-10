@@ -1,8 +1,158 @@
-@test
+@test(0)
+  @input
+    first
+
+    third
+  @output{Line(first)Line()Line(third)}
+
+@test(1)
   @input{@something}
-  @output{Cmd("something")}
+  @output{@something}
 
-@test
-  @input{@a@b@c}
-  @output{Line(Cmd("a")Cmd("b")Cmd("c"))}
+@test(2)
+  @input
+    @a@b@c
+  @output
+    Line(@a@b@c)
 
+@test(3)
+  @input{@a  @b@c},
+  @output{Line(@a  @b@c)}
+
+@test(4)
+  @input
+    @a @b @c
+  @output
+    Line(@a @b @c)
+      
+@test(5)
+  @input{some text@a @b @c},
+  @output
+    Line(some text@a @b @c)
+  
+@test(6)
+  @input
+    @a@b@c
+    @d@e
+  @output
+    Line(@a@b@c)Line(@d@e)
+
+@test(7)
+  @input
+    Text outside
+    @mycmd(a ,  b ,  c  )
+      Text inside
+      more text
+  @output
+    Line(Text outside)@mycmd(a,b,c)`Line(Text inside)Line(more text)`
+  
+@test(8)
+  @input
+    @mycmd( a =  3 , b... ,  + +c + + )
+      blis blas blus
+  @output
+    @mycmd(a =  3,b...,+ +c + +)`Line(blis blas blus)`
+
+@test(9)
+  @input
+
+    @emptylineatbeginning
+  @output 
+    Line()@emptylineatbeginning
+
+@test(10)
+  @input
+
+    @something
+  
+      Two empty lines at different levels
+  @output
+    Line()@something`Line()Line(Two empty lines at different levels)`
+
+@test(11)
+  @input
+
+    @main
+      @a
+      @b
+      @c
+  @output
+    Line()@main`@a@b@c`
+
+@test(11)
+  @input
+
+    @main
+      @a@b@c
+  @output
+    Line()@main`Line(@a@b@c)`
+
+@test(12)
+  @input
+
+    @main
+      a
+      b
+      c
+  @output
+    Line()@main`Line(a)Line(b)Line(c)`
+  
+@test(13)
+  @input
+    @main
+      abc
+
+      def
+  @output
+    @main`Line(abc)Line()Line(def)`
+  
+@test(14)
+  @input
+    @command
+      1st
+        2nd
+      3rd
+  @output
+    @command`Line(1st)Line(  2nd)Line(3rd)`
+      
+@test(15)
+  @input
+    @command
+        1st
+        2nd
+      3rd
+  @output
+    @command`Line(  1st)Line(  2nd)Line(3rd)`
+
+@test(16)
+  @input
+    @a{[]}@b[{}]
+  @output
+    Line(@a`[]`@b`{}`)
+
+@test(17)
+  @input 
+    @a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>
+  @output
+    Line(@a`A`@b`B`@c`C`@d`D`)
+
+@test(18)
+  @input{@a[@b<@c>]}
+  @output
+    @a`@b`@c``
+
+@test(19)
+  @input
+    @a
+      @b
+        @c
+  @output
+    @a`@b`@c``
+
+@test(20)
+  @input
+    first
+
+    third
+  @output
+    Line(first)Line()Line(third)
