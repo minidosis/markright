@@ -336,5 +336,4 @@ module.exports = {
   Command,
   InlineCommand,
   BlockCommand,
-  matchingDelimiter
 }
