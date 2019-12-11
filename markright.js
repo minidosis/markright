@@ -10,6 +10,7 @@ const assert = (expr, msg) => {
 const commandChar = '@'
 const openDelimiters = '[{(<'
 const closeDelimiters = ']})>'
+const allDelimiters = `${commandChar} ${openDelimiters}${closeDelimiters}`
 
 const matchingDelimiter = (delim) => {
   assert(delim[0].repeat(delim.length) === delim) // all the same char
@@ -19,8 +20,7 @@ const matchingDelimiter = (delim) => {
 }
 
 const isOpenDelim = ch => openDelimiters.indexOf(ch) !== -1
-const isCloseDelim = ch => closeDelimiters.indexOf(ch) !== -1
-const isDelimiter = ch => ch === commandChar || ch === ' ' || isOpenDelim(ch) || isCloseDelim(ch)
+const isDelimiter = ch => allDelimiters.indexOf(ch) !== -1
 
 const allSpaces = line => line === ' '.repeat(line.length)
 const emptyLine = line => line === '' || allSpaces(line)
