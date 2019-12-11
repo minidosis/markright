@@ -16,7 +16,7 @@
     Line(@a@b@c)
 
 @test(3)
-  @input{@a  @b@c},
+  @input{@a  @b@c}
   @output{Line(@a  @b@c)}
 
 @test(4)
@@ -26,7 +26,7 @@
     Line(@a @b @c)
       
 @test(5)
-  @input{some text@a @b @c},
+  @input{some text@a @b @c}
   @output
     Line(some text@a @b @c)
   
@@ -128,18 +128,18 @@
   @input
     @a{[]}@b[{}]
   @output
-    Line(@a`[]`@b`{}`)
+    Line(@a{[]}@b[{}])
 
 @test(17)
   @input 
     @a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>
   @output
-    Line(@a`A`@b`B`@c`C`@d`D`)
+    Line(@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>)
 
 @test(18)
-  @input{@a[@b<@c>]}
+  @input{@aaa[@bbb<@ccc>]}
   @output
-    @a`@b`@c``
+    @aaa[@bbb<@ccc>]
 
 @test(19)
   @input
@@ -231,3 +231,17 @@
 
   @output
     @aLine()Line()@b
+
+@test(26)
+  @input
+    @big[@a{1}@b{2}@c@d{@e<3>}]
+  @output
+    @big[Line(@a{1}@b{2}@c@d{@e<3>})]
+
+@test(27)
+  @input{@@}
+  @output{Line(@)}
+
+@test(28)
+  @input{1@@}
+  @output{Line(1@)}

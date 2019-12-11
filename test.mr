@@ -1,8 +1,0 @@
-@test(7)
-  @input
-    Text outside
-    @mycmd(a ,  b ,  c  )
-      Text inside
-      more text
-  @output
-    Line(Text outside)@mycmd(a,b,c)`Line(Text inside)Line(more text)`

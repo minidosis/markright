@@ -1,316 +1,340 @@
 
-// TODO: Añadir posición en lin:col a los errores!
+const fs = require('fs')
 
-const DEFAULT_CONTROL_CHARACTER = '@'
-const DELIMITERS = "{}[]<>" // Tienen que estar por parejas!
-const TAB_WIDTH = 2;
-
-const openDelimiters = [...DELIMITERS].filter((_, i) => i % 2 == 0).join('')
-const closeDelimFor = ch => DELIMITERS[DELIMITERS.indexOf(ch) + 1]
-
-const error = msg => { throw new Error(msg) }
-
-const allSpaces = str => str.match(/^\s*$/)
-
-const parseIndentation = str => {
-  let [_, space, line] = str.match(/^(\s*)(.*)$/)
-  if (space.length % 2 == 1) {
-    error(`Indentation is not a multiple of TAB_WIDTH (= ${TAB_WIDTH}): '${str}'`)
+const assert = (expr, msg) => {
+  if (!expr) {
+    throw new Error(`assert failed: ${msg}`)
   }
-  return { level: space.length / 2, line }
 }
 
-const getFullLineCommand = line => {
-  const m = line.match(/^@([a-z]+)(\((.*)\))?$/)
-  return m ? { id: m[1], args: m[3] } : null
+const commandChar = '@'
+const openDelimiters = '[{(<'
+const closeDelimiters = ']})>'
+
+const matchingDelimiter = (delim) => {
+  assert(delim[0].repeat(delim.length) === delim) // all the same char
+  const pos = openDelimiters.indexOf(delim[0])
+  assert(pos !== -1, `No matching delimiter for '${delim[0]}'`)
+  return closeDelimiters[pos].repeat(delim.length)
 }
+
+const isOpenDelim = ch => openDelimiters.indexOf(ch) !== -1
+const isCloseDelim = ch => closeDelimiters.indexOf(ch) !== -1
+const isDelimiter = ch => ch === commandChar || ch === ' ' || isOpenDelim(ch) || isCloseDelim(ch)
+
+const allSpaces = line => line === ' '.repeat(line.length)
+const emptyLine = line => line === '' || allSpaces(line)
+const indentation = line => (emptyLine(line) ? 0 : [...line].findIndex(c => c !== ' '))
+
+// Objects
+
+class Item {
+  addRaw(str) { this.rawChildren = [...(this.rawChildren || []), str] }
+  hasRawChildren() { return Array.isArray(this.rawChildren) }
+  add(str) { this.children = [...(this.children || []), str] }
+}
+
+class Line extends Item { // = List<InlineItem>
+  constructor(children) {
+    super()
+    if (children) this.children = children
+  }
+  add(item) { this.children = [...(this.children || []), item] }
+
+  isSingle() { return this.children && this.children.length === 1 }
+  isSingleCommand() { return this.isSingle() && this.children[0] instanceof Command }
+  isSingleBlockCommand() { return this.isSingle() && this.children[0] instanceof BlockCommand }
+
+  allCommandsToInlineCommands() {
+    this.children = this.children.map(item => {
+      return item instanceof Command ? item.toInlineCommand() : item
+    })
+  }
+
+  executeAllCommands(execFunc) {
+    if (this.children) {
+      this.children = this.children.map(item => {
+        return (item instanceof Command ? execFunc(item) : item)
+      })
+    }
+  }
+}
+
+class Command extends Item {
+  constructor(name, args) {
+    super()
+    if (name) this.name = name
+    if (args) this.args = args
+  }
+  toInlineCommand() {
+    return new InlineCommand(this.name, this.args)
+  }
+}
+
+class BlockCommand extends Command { }
+
+class InlineCommand extends Command {
+  constructor(name, args, rawChildren, delim) {
+    super(name, args)
+    if (rawChildren) this.rawChildren = rawChildren
+    if (delim) this.delim = delim
+  }
+  toInlineCommand() { return this }
+}
+
+// Parser
 
 class Parser {
-  constructor(commandFuncs, controlChar = DEFAULT_CONTROL_CHARACTER) {
-    this.commandFuncs = commandFuncs
-    this.controlChar = controlChar
+  constructor({ recur, funcMap }) {
+    this.funcMap = funcMap
+    this.recur = (recur ? true : false)
+    this.execute = this.execute.bind(this)
+    this.parseRawChildren = this.parseRawChildren.bind(this)
   }
 
-  addToParent(x, level) {
-    const parent = this.stack[level]
-    if (parent.children === undefined) {
-      parent.children = []
-    }
-    if (x === null && parent.children.length == 0) {
-      return // Do not add null at the beginning
-    }
-    parent.children.push(x)
-  }
-
-  parseInlineCommand(text, i, closeDelim) {
-    let cmd = { cmd: '', inline: true }
-    const stopAt = " @()" + DELIMITERS
-    while (i < text.length && stopAt.indexOf(text[i]) == -1) {
-      cmd.cmd += text[i++]
-    }
-    if (text[i] == '(') {
-      cmd.args = []
-      let arg = ''
-      while (text[++i] != ')') {
-        if (i >= text.length) {
-          error(`End of string while parsing args`)
+  parseRawChildren(cmd) {
+    if (cmd.hasRawChildren()) {
+      if (cmd instanceof InlineCommand) {
+        assert(cmd.rawChildren.length === 1)
+        assert(typeof cmd.rawChildren[0] === 'string')
+        let item = this.parseLine(cmd.rawChildren[0], this.funcMap)
+        if (item instanceof Line) {
+          item.children = item.children.map(x => {
+            return x instanceof Command ? this.parseRawChildren(x) : x
+          })
+          if (item.children.length === 1) {
+            item = item.children[0]
+          }
         }
-        if (text[i] == ',') {
-          cmd.args.push(arg.trim())
-          arg = ''
-        } else {
-          arg += text[i]
-        }
+        cmd.children = item
       }
-      cmd.args.push(arg.trim())
-      i++
-    }
-    let end = i
-    if (text.indexOf(closeDelim, i) != i && DELIMITERS.indexOf(text[i]) != -1) {
-      const delimChar = text[i];
-      if (openDelimiters.indexOf(delimChar) == -1) {
-        error(`Delimiter '${delimChar}' not allowed`)
-      }
-      cmd.delim = { open: delimChar }
-      i++
-      while (text[i] == delimChar) {
-        cmd.delim.open += text[i++]
-      }
-      cmd.delim.close = closeDelimFor(delimChar).repeat(cmd.delim.open.length)
-      let result = this.parseLine(text.slice(i), cmd.delim.close)
-      cmd.children = (Array.isArray(result.elems) ? result.elems : [result.elems])
-      i += result.end
-      if (text.indexOf(cmd.delim.close, i) != i) {
-        error(`Close delimiter for '${cmd.delim.open}' not found`)
-      }
-      end = i + cmd.delim.close.length
-    }
-    return { cmd, end }
-  }
-
-  parseLine(text, closeDelim) {
-    let elems = []
-    let curr = ''
-    let i = 0
-    while (i < text.length) {
-      if (text[i] == this.controlChar &&
-        (text[i + 1] == this.controlChar || i == text.length - 1 || text.indexOf(closeDelim, i + 1) == i + 1)) {
-        curr += this.controlChar
-        i += 2
-      }
-      else if (text.indexOf(closeDelim, i) == i) {
-        break
-      }
-      else if (text[i] == this.controlChar) {
-        if (curr) elems.push(curr), curr = ''
-        let { cmd, end } = this.parseInlineCommand(text, i + 1, closeDelim)
-        elems.push(cmd)
-        i = end
+      else if (cmd instanceof BlockCommand) {
+        assert(Array.isArray(cmd.rawChildren))
+        assert(cmd.rawChildren.every(ln => typeof ln === 'string'))
+        cmd.children = this.parse(cmd.rawChildren, this.funcMap)
       }
       else {
-        curr += text[i]
+        assert(false, 'Not an InlineCommand or BlockCommand')
+      }
+      delete cmd.rawChildren // avoid reparsing
+    }
+    return cmd
+  }
+
+  execute(item) {
+    const executeCommand = (cmd) => {
+      const fn = this.funcMap && this.funcMap[cmd.name]
+      if (fn === undefined) {
+        if (this.recur) {
+          // recursion implies that executing parses the rawChildren
+          return this.parseRawChildren(cmd)
+        }
+        return cmd
+      }
+      if (typeof fn !== 'function') {
+        throw new Error(`Command '${cmd.name}' is not a function`)
+      }
+      return fn(cmd.args, cmd.rawChildren)
+    }
+
+    switch (item.constructor) {
+      case String:
+        return item
+      case Line:
+        if (item.isSingleCommand()) {
+          return executeCommand(item.children[0])
+        } else {
+          item.executeAllCommands(executeCommand)
+        }
+        return item
+      case InlineCommand:
+      case BlockCommand:
+        return executeCommand(item)
+      default:
+        throw new Error(`execute: unexpected object of type ${x.constructor}`)
+    }
+  }
+
+  parseLine(lineStr) {
+
+    const parseName = () => {
+      let name = '';
+      while (i < lineStr.length && !isDelimiter(lineStr[i])) {
+        name += lineStr[i]
         i++
       }
+      return name
     }
-    if (curr) elems.push(curr)
-    if (elems.length == 1) elems = elems[0]
-    return { elems, end: i }
-  }
 
-  parseCommand(cmd, level) {
-    const newobj = {
-      cmd: cmd.id,
-      args: (cmd.args ? cmd.args.split(',').map(x => x.trim()) : undefined)
-    }
-    if (level == this.stack.length - 1) {
-      this.stack.push(newobj)
-    } else {
-      this.stack[level + 1] = newobj
-      // this.stack.slice(level + 2)
-    }
-    return newobj
-  }
-
-  parse(input) {
-    const lines = input.split('\n')
-    this.stack = [{ children: [] }]
-    let emptyLine = false
-    for (let ln of lines) {
-      if (allSpaces(ln)) {
-        emptyLine = true
-        continue
+    const parseArgs = () => {
+      if (lineStr[i] === '(') {
+        i++
+        let args = [], curr = ''
+        while (i < lineStr.length) {
+          if (lineStr[i] === ')') {
+            args.push(curr.trim())
+            i++
+            break;
+          } else if (lineStr[i] === ',') {
+            args.push(curr.trim())
+            curr = ''
+          } else {
+            curr += lineStr[i]
+          }
+          i++
+        }
+        return args
       }
-      let { line, level } = parseIndentation(ln)
-      const cmd = getFullLineCommand(line)
-      if (level > this.stack.length - 1) {
-        if (cmd) {
-          error(`Indentation level too deep at: '${ln}'`)
+    }
+
+    const parseChild = () => {
+      const openCh = lineStr[i]
+      let width = 0
+      if (!isOpenDelim(openCh)) {
+        return {}
+      }
+      while (lineStr[i] === openCh) {
+        width++
+        i++
+      }
+      const start = i
+      const openDelim = openCh.repeat(width)
+      const closeDelim = matchingDelimiter(openDelim)
+      let end = lineStr.indexOf(closeDelim, start)
+      if (end === -1) {
+        throw new Error(`Expected '${closeDelim}`)
+      }
+      i = end + width
+      return {
+        rawChild: [lineStr.slice(start, end)],
+        delim: {
+          open: openDelim,
+          close: closeDelim,
+        },
+      }
+    }
+
+    let i = 0
+    let line = new Line()
+    let acumText = ''
+    while (i < lineStr.length) {
+      if (lineStr.slice(i, i + 2) == commandChar.repeat(2)) {
+        acumText += commandChar
+        i += 2
+      } else if (lineStr[i] !== commandChar) {
+        acumText += lineStr[i]
+        i++
+      } else {
+        i++
+        if (acumText) {
+          line.add(acumText)
+          acumText = ''
+        }
+        const name = parseName()
+        const args = parseArgs()
+        const { rawChild, delim } = parseChild()
+        if (rawChild) {
+          line.add(new InlineCommand(name, args, rawChild, delim))
         } else {
-          // Accept text lines with excess indentation
-          level = this.stack.length - 1
-          line = ln.slice(2 * (this.stack.length - 1))
+          // We don't know yet if this is a block command or not, in fact.
+          line.add(new BlockCommand(name, args))
         }
       }
-      let newobj = (cmd
-        ? this.parseCommand(cmd, level)
-        : this.parseLine(line).elems
-      )
-      if (emptyLine) this.addToParent(null, level)
-      this.addToParent(newobj, level)
-      emptyLine = false
     }
-    return this.stack[0].children
+    if (!allSpaces(acumText)) {
+      line.add(acumText)
+    }
+    // If we have a single command without children, return a BlockCommand
+    if (line.isSingleBlockCommand()) {
+      return line.children[0]
+    } else {
+      // Now we know that any BlockCommands are really InlineCommands
+      line.allCommandsToInlineCommands()
+      return line
+    }
+  }
+
+  parse(lines) {
+    assert(lines, 'lines is null or undefined')
+    assert(Array.isArray(lines), '"lines" must be an array')
+    assert(lines.every(ln => typeof ln === 'string'), 'All lines are not strings')
+
+    const itemList = []
+    let blockCommand = null
+    let pendingEmptyLine = false
+
+    for (var line of lines) {
+      if (emptyLine(line)) {
+        // We don't know now where this empty line should go.
+        // We will know when we see the indentation of the next line.
+        if (pendingEmptyLine) {
+          // But: to allow for empty lines at the end, we add any repeated empty
+          //      lines at the end of the current command (only if there is already some content!)
+          if (blockCommand !== null && blockCommand.hasRawChildren()) {
+            blockCommand.addRaw('')
+          } else {
+            itemList.push(new Line())
+          }
+        }
+        pendingEmptyLine = true
+        continue
+      }
+      const ind = indentation(line)
+      assert(ind % 2 == 0, 'Indentation must be an even number')
+      if (ind > 0) {
+        if (blockCommand === null) {
+          itemList.push(this.parseLine(line))
+        } else {
+          if (pendingEmptyLine) {
+            blockCommand.addRaw('')
+            pendingEmptyLine = false
+          }
+          blockCommand.addRaw(line.slice(2))
+        }
+        continue
+      }
+      if (pendingEmptyLine) {
+        itemList.push(new Line())
+        pendingEmptyLine = false
+      }
+      if (line[0] !== commandChar) {
+        blockCommand = null
+        itemList.push(this.parseLine(line))
+        continue
+      }
+      blockCommand = null
+      const item = this.parseLine(line)
+      if (item instanceof BlockCommand) {
+        blockCommand = item
+      }
+      itemList.push(item)
+    }
+    if (pendingEmptyLine) {
+      itemList.push(new Line())
+    }
+    return itemList.map(this.execute)
   }
 }
 
-const _parser = new Parser();
-const parse = str => {
-  return _parser.parse(str)
+const parse = (lines, funcMap) => new Parser({ funcMap }).parse(lines)
+const parseRecur = (lines, funcMap) => new Parser({ funcMap, recur: true }).parse(lines)
+
+const _parseFile = parse => (filename, funcMap) => {
+  const lines = fs.readFileSync(filename).toString().split('\n')
+  return parse(lines, funcMap)
 }
 
-class Walker {
-  constructor() {
-    this.stack = []
-  }
-
-  $invoke(fnName, x) {
-    if (this[fnName]) {
-      this[fnName](x)
-      return true
-    }
-    return false
-  }
-
-  $in(...cmdNames) {
-    let i = 0
-    this.stack.forEach(c => {
-      if (c == cmdNames[i]) i++
-    })
-    return i === cmdNames.length;
-  }
-
-  $line(elems) {
-    elems.forEach(x => {
-      if (x.cmd) {
-        this.$invoke(x.cmd, x)
-      } else {
-        this.$invoke('$text', x)
-      }
-    })
-  }
-
-  $walkElem(x) {
-    if (x === null) {
-      this.$invoke('$null')
-    }
-    else if (x.cmd) {
-      this.stack.push(x.cmd)
-      if (!this.$invoke(x.cmd, x)) {
-        this.$invoke('$command', x)
-      }
-      this.stack.pop()
-    }
-    else if (typeof x === 'string') {
-      this.$invoke('$text', x)
-    }
-    else if (Array.isArray(x)) {
-      this.stack.push('$line')
-      this.$invoke('$line', x)
-      this.stack.pop();
-    }
-  }
-
-  $walk(mr) {
-    if (mr) {
-      if (Array.isArray(mr)) {
-        mr.forEach(this.$walkElem.bind(this))
-      } else {
-        this.$walkElem(mr)
-      }
-    }
-  }
-}
-
-class Stringifier extends Walker {
-  constructor(output) {
-    super()
-    this.out = output
-    this.level = 0
-    this.beginl = true
-    this.inline = []
-  }
-
-  $$endl() {
-    if (!this.beginl) {
-      this.out.write(`\n`)
-      this.beginl = true
-    }
-  }
-
-  $$inline() {
-    return this.inline.length > 0 && 
-           this.inline[this.inline.length-1]
-  }
-  $$pushInline(x) { this.inline.push(x) }
-  $$popInline() { this.inline.pop() }
-
-  $$break() {
-    if (!(this.$in('$line') || this.$$inline())) {
-      this.$$endl()
-    }    
-  }
-
-  $$write(x) {
-    if (this.beginl) {
-      this.out.write(' '.repeat(this.level * 2))
-    }
-    this.out.write(x)
-    this.beginl = false;
-  }
-
-  $null() {
-    this.out.write('\n')
-    this.beginl = true
-  }
-
-  $line(elems) {
-    this.$walk(elems)
-    this.$$break()
-  }
-
-  $text(text) {
-    this.$$write(text)
-    this.$$break()
-  }
-
-  $command(cmd) {
-    const id = cmd.cmd;
-    const args = (cmd.args ? `(${cmd.args.join(', ')})` : '')
-    this.$$pushInline(cmd.inline)
-    this.$$write('@' + id + args)
-    if (this.$$inline() || this.$in('$line')) {
-      if (cmd.children) {
-        this.$$write(cmd.delim.open)
-        this.$walk(cmd.children)
-        this.$$write(cmd.delim.close)
-      }
-    }
-    else {
-      this.$$endl()
-      if (cmd.children) {
-        this.level++
-        this.$walk(cmd.children)
-        this.level--
-      }
-    }
-    this.$$popInline()
-    this.$$break()
-  }
-}
+const parseFile = _parseFile(parse)
+const parseFileRecur = _parseFile(parseRecur)
 
 module.exports = {
-  Parser,
   parse,
-  Walker,
-  Stringifier,
+  parseRecur,
+  parseFile,
+  parseFileRecur,
+  Line,
+  Command,
+  InlineCommand,
+  BlockCommand,
+  matchingDelimiter
 }

@@ -1,5 +1,6 @@
 CommandChar: "@"
 Delimiters: "(){}[]<>,"
+
 BaseCommand<T>: {
   name: string,       // sin delimitadores
   args: List<string>, // sin delimitadores
@@ -7,9 +8,9 @@ BaseCommand<T>: {
 }
 
 Markright: List<Item>
-Item: Command | Line
-  Command: BaseCommand<Item>
-  Line: List<InlineItem>
-    InlineItem: Text | InlineCommand
-      Text: string
+Item: { rawContent: string } * (BlockCommand | Line)
+  BlockCommand: BaseCommand<Item>
+  Line: { children: List<InlineItem> }
+    InlineItem: InlineCommand | Text
       InlineCommand: BaseCommand<InlineItem>
+      Text: { child: string }

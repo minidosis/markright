@@ -1,6 +1,6 @@
 
 const fs = require('fs')
-const markright = require('./markright')
+const markright = require('../markright')
 
 const filename = process.argv[2]
 

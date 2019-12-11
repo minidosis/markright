@@ -1,6 +1,6 @@
 
 const fs = require('fs')
-const markright = require('./markright')
+const markright = require('../markright')
 
 const obj1 = markright.parse(fs.readFileSync('informal-test.mr').toString())
 // console.log(JSON.stringify(obj1, null, 2))

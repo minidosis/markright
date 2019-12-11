@@ -1,126 +1,82 @@
 
-const markright = require('./markright')
+const MR = require('./markright')
+const colors = require('colors');
 
-const tests = [
-  {
-    input: `@something`,
-    output: '[{"cmd":"something"}]'
-  },
-  {
-    input: `@a@b@c`,
-    output: '[[{"cmd":"a","inline":true},{"cmd":"b","inline":true},{"cmd":"c","inline":true}]]'
-  },
-  {
-    input: `@a  @b@c`,
-    output: '[[{"cmd":"a","inline":true},"  ",{"cmd":"b","inline":true},{"cmd":"c","inline":true}]]'
-  },
-  {
-    input: `@a @b @c`,
-    output: '[[{"cmd":"a","inline":true}," ",{"cmd":"b","inline":true}," ",{"cmd":"c","inline":true}]]'
-  },
-  {
-    input: `some text@a @b @c`,
-    output: '[["some text",{"cmd":"a","inline":true}," ",{"cmd":"b","inline":true}," ",{"cmd":"c","inline":true}]]'
-  },
-  {
-    input: `@a@b@c
-@d@e`,
-    output: '[[{"cmd":"a","inline":true},{"cmd":"b","inline":true},{"cmd":"c","inline":true}],[{"cmd":"d","inline":true},{"cmd":"e","inline":true}]]'
-  },
-  {
-    input: `
-@mycmd(a ,  b ,  c  )
-  Text inside
-`,
-    output: '[{"cmd":"mycmd","args":["a","b","c"],"children":["Text inside"]}]'
-  },
-  {
-    input: `
-@mycmd( a =  3 , b... ,  + +c + + )
-  blis blas blus
-`,
-    output: '[{"cmd":"mycmd","args":["a =  3","b...","+ +c + +"],"children":["blis blas blus"]}]'
-  },  
-  {
-    input:  `
-
-@eatemptylinesatthebeginning
-`,
-    output: '[{"cmd":"eatemptylinesatthebeginning"}]'
-  },
-  {
-    input:  `
-@something
-  
-  Also eat the first null child
-`,
-    output: '[{"cmd":"something","children":["Also eat the first null child"]}]'
-  },
-  {
-    input: `
-@main
-  @a
-  @b
-  @c
-`,
-    output: '[{"cmd":"main","children":[{"cmd":"a"},{"cmd":"b"},{"cmd":"c"}]}]'
-  },
-  {
-    input: `
-@main
-  a
-  b
-  c
-`,
-    output: '[{"cmd":"main","children":["a","b","c"]}]'
-  },
-  {
-    input: `
-@main
-  abc
-
-  def
-`,
-    output: '[{"cmd":"main","children":["abc",null,"def"]}]'
-  },
-  {
-    input: `
-@command
-  1st
-    2nd
-  3rd`,
-    output: '[{"cmd":"command","children":["1st","  2nd","3rd"]}]'
-  },
-  {
-    input: `
-@command
-    1st
-    2nd
-  3rd`,
-    output: '[{"cmd":"command","children":["  1st","  2nd","3rd"]}]'
-  },
-  {
-    input: `@a{[]}@b[{}]`,
-    output: '[[{"cmd":"a","inline":true,"delim":{"open":"{","close":"}"},"children":["[]"]},{"cmd":"b","inline":true,"delim":{"open":"[","close":"]"},"children":["{}"]}]]'
-  },
-  {
-    input: `@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>`,
-    output: '[[' + '{"cmd":"a","inline":true,"delim":{"open":"<","close":">"},"children":["A"]},' + 
-                   '{"cmd":"b","inline":true,"delim":{"open":"<<","close":">>"},"children":["B"]},' +
-                   '{"cmd":"c","inline":true,"delim":{"open":"<<<","close":">>>"},"children":["C"]},' + 
-                   '{"cmd":"d","inline":true,"delim":{"open":"<<<<","close":">>>>"},"children":["D"]}' + 
-            ']]'
+const performTest = (title, input, output) => {
+  const print = (x) => {
+    switch (x.constructor) {
+      case String:
+        return x
+      case Array:
+        return `${x.map(print).join('')}`
+      case MR.Line:
+        return `Line(${x.children ? x.children.map(print).join('') : ''})`
+      case MR.BlockCommand: {
+        let result = `@${x.name}`
+        if (x.args) result += `(${x.args.join(',')})`
+        if (x.children) {
+          result += `\`${print(x.children)}\``
+        }
+        return result
+      }
+      case MR.InlineCommand: {
+        let result = `@${x.name}`
+        if (x.args) result += `(${x.args.join(',')})`
+        if (x.children) {
+          result += `${x.delim.open}${print(x.children)}${x.delim.close}`
+        }
+        return result
+      }
+      default:
+        throw new Error(`Unexpected object of type ${x.constructor}`)
+    }
   }
-]
 
-// TODO: Stringifier tests
-
-for (let test of tests) {
-  const output = markright.parse(test.input)
-  if (JSON.stringify(output) != test.output) {
-    console.log("Input  ", JSON.stringify(test.input))
-    console.log("Should ", test.output)
-    console.log("Is     ", JSON.stringify(output))
-    console.log()
+  try {
+    const parsed = MR.parseRecur(input)
+    const actual = parsed.map(print).join('')
+    const expected = output.join('\n')
+    if (actual !== expected) {
+      process.stdout.write('x')
+      return [
+        `Failed test "${title}": ${colors.brightYellow(input)}`,
+        `${colors.green(`"${expected}"`)}`,
+        `${colors.red(`"${actual}"`)}`,
+        ``,
+      ]
+    } else {
+      process.stdout.write('.')
+    }
+  } catch (e) {
+    console.error(`Test ${title} failed with error: ${e.toString()}`)
   }
+}
+
+let testfile = process.argv[2]
+if (testfile === undefined) {
+  testfile = 'tests.mr'
+}
+
+let errors = []
+
+MR.parseFile(testfile, {
+  'test': (args, testBody) => {
+    const testName = args[0]
+    let input, output;
+    MR.parse(testBody, {
+      'input': (_, rawChildren) => input = rawChildren,
+      'output': (_, rawChildren) => output = rawChildren,
+    })
+    if (!input || !output) {
+      throw new Error(`Error in test ${testName}: Input or output is empty!`)
+    }
+    const errs = performTest(testName, input, output)
+    if (errs) {
+      errors.push(...errs)
+    }
+  }
+})
+console.log()
+if (errors.length > 0) {
+  console.log(`\n${errors.join('\n')}`)
 }
