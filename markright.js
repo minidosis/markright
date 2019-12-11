@@ -66,12 +66,13 @@ class Command extends Item {
     if (name) this.name = name
     if (args) this.args = args
   }
-  toInlineCommand() {
-    return new InlineCommand(this.name, this.args)
-  }
 }
 
-class BlockCommand extends Command { }
+class BlockCommand extends Command { 
+  toInlineCommand() {
+    return new InlineCommand(this.name, this.args)
+  }  
+}
 
 class InlineCommand extends Command {
   constructor(name, args, rawChildren, delim) {
