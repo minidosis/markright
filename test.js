@@ -50,7 +50,8 @@ const performTest = (title, input, output) => {
       process.stdout.write('.')
     }
   } catch (e) {
-    console.error(`Test ${title} failed with error: ${e.toString()}`)
+    process.stdout.write('x')
+    return [`Test "${title}" failed with exception:`, e.toString(), ``]
   }
 }
 

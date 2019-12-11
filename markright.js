@@ -202,7 +202,7 @@ class Parser {
       const closeDelim = matchingDelimiter(openDelim)
       let end = lineStr.indexOf(closeDelim, start)
       if (end === -1) {
-        throw new Error(`Expected '${closeDelim}`)
+        throw new Error(`Expected '${closeDelim}' in '${lineStr.slice(start)}'`)
       }
       i = end + width
       return {
