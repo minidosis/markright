@@ -1,75 +1,93 @@
-@test(0)
+@test(simple text)
+  @input
+    hi
+  @output
+    Line(hi)
+
+@test(two lines)
+  @input
+    hi
+    ho
+  @output
+    Line(hi)Line(ho)
+
+@test(Empty line)
   @input
     first
 
     third
   @output{Line(first)Line()Line(third)}
 
-@test(1)
+@test(simple command)
   @input{@something}
   @output{@something}
 
-@test(2)
+@test(three inline commands)
   @input
     @a@b@c
   @output
     Line(@a@b@c)
 
-@test(3)
+@test(spaces between inline commands)
   @input{@a  @b@c}
   @output{Line(@a  @b@c)}
 
-@test(4)
+@test(spaces between inline commands 2)
   @input
     @a @b @c
   @output
     Line(@a @b @c)
       
-@test(5)
+@test(text and inline commands)
   @input{some text@a @b @c}
   @output
     Line(some text@a @b @c)
   
-@test(6)
+@test(two lines with inline commands)
   @input
     @a@b@c
     @d@e
   @output
     Line(@a@b@c)Line(@d@e)
 
-@test(7)
+@test(remove spaces in arguments)
   @input
-    Text outside
-    @mycmd(a ,  b ,  c  )
-      Text inside
-      more text
+    @cmd(   a   ,    b  ,, c )
   @output
-    Line(Text outside)@mycmd(a,b,c)`Line(Text inside)Line(more text)`
-  
-@test(8)
+    @cmd(a,b,,c)
+
+@test(remove spaces in arguments 2)
   @input
     @mycmd( a =  3 , b... ,  + +c + + )
       blis blas blus
   @output
     @mycmd(a =  3,b...,+ +c + +)`Line(blis blas blus)`
 
-@test(9)
+@test(text outside and inside)
+  @input
+    Text outside
+    @cmd
+      Text inside
+  @output
+    Line(Text outside)@cmd`Line(Text inside)`
+
+@test(empty line at the beginning)
   @input
 
     @emptylineatbeginning
   @output 
     Line()@emptylineatbeginning
 
-@test(10)
+@test(two empty lines at different levels)
   @input
 
     @something
   
-      Two empty lines at different levels
+      Yay
   @output
-    Line()@something`Line()Line(Two empty lines at different levels)`
+    Line()@something`Line()Line(Yay)`
 
-@test(11)
+@test(Command with block subcommands)
   @input
 
     @main
@@ -79,7 +97,7 @@
   @output
     Line()@main`@a@b@c`
 
-@test(11)
+@test(Command with inline subcommands)
   @input
 
     @main
@@ -87,7 +105,7 @@
   @output
     Line()@main`Line(@a@b@c)`
 
-@test(12)
+@test(Command with several lines)
   @input
 
     @main
@@ -97,7 +115,7 @@
   @output
     Line()@main`Line(a)Line(b)Line(c)`
   
-@test(13)
+@test(Empty lines in subcommand)
   @input
     @main
       abc
@@ -106,7 +124,7 @@
   @output
     @main`Line(abc)Line()Line(def)`
   
-@test(14)
+@test(Indentation in inner text)
   @input
     @command
       1st
@@ -115,7 +133,7 @@
   @output
     @command`Line(1st)Line(  2nd)Line(3rd)`
       
-@test(15)
+@test(Indentation in inner text 2)
   @input
     @command
         1st
@@ -124,24 +142,24 @@
   @output
     @command`Line(  1st)Line(  2nd)Line(3rd)`
 
-@test(16)
+@test(Different delimiters 1)
   @input
     @a{[]}@b[{}]
   @output
     Line(@a{[]}@b[{}])
 
-@test(17)
+@test(Different delimiters 2)
   @input 
     @a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>
   @output
     Line(@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>)
 
-@test(18)
+@test(Different delimiters 3 + no line)
   @input{@aaa[@bbb<@ccc>]}
   @output
     @aaa[@bbb<@ccc>]
 
-@test(19)
+@test(Nested block commands)
   @input
     @a
       @b
@@ -149,27 +167,7 @@
   @output
     @a`@b`@c``
 
-
-@test(20)
-  @input
-    first
-
-    third
-  @output
-    Line(first)Line()Line(third)
-
-@test(21)
-  @input
-    @first
-      1
-
-    @second
-      2
-
-  @output
-    @first`Line(1)`Line()@second`Line(2)`
-
-@test(22)
+@test(More nested block commands FIXME)
   @input
     @a
       @b
@@ -180,7 +178,7 @@
   @output
     @a`@b`@c`@d`@e`@f```
 
-@test(23)
+@test(C++ hello world)
   @input
     @code
       #include<iostream>
@@ -192,7 +190,18 @@
   @output
     @code`Line(#include<iostream>)Line(using namespace std;)Line()Line(int main() {)Line(  cout << "hi" << endl;)Line(})`
 
-@test(24)
+@test(Where empty lines attach 1)
+  @input
+    @first
+      1
+
+    @second
+      2
+
+  @output
+    @first`Line(1)`Line()@second`Line(2)`
+
+@test(Where empty lines attach 2)
   @input
     @a
       1
@@ -209,7 +218,7 @@
   @output
     @a`Line(1)`@b`Line(2)`Line()@c`Line(3)Line()`Line()@d`Line(4)`
 
-@test(25)
+@test(Where empty lines attach 3)
   @input
     @a
       1
@@ -222,7 +231,7 @@
     @a`Line(1)Line()Line()`Line()@b
 
 
-@test(25)
+@test(Where empty lines attach 4)
   @input
     @a
 
@@ -232,16 +241,17 @@
   @output
     @aLine()Line()@b
 
-@test(26)
+@test(Nested inline commands)
   @input
     @big[@a{1}@b{2}@c@d{@e<3>}]
   @output
     @big[Line(@a{1}@b{2}@c@d{@e<3>})]
 
-@test(27)
+@test(Command char)
   @input{@@}
   @output{Line(@)}
 
-@test(28)
+@test(Command char 2)
   @input{1@@}
   @output{Line(1@)}
+
