@@ -71,7 +71,7 @@ MR.parseFile(testfile, {
       'output': (_, rawChildren) => output = rawChildren,
     })
     if (!input || !output) {
-      throw new Error(`Error in test ${testName}: Input or output is empty!`)
+      throw new Error(`Error in test "${testName}": Input or output is empty!`)
     }
     const errs = performTest(testName, input, output)
     if (errs) errors.push(...errs)
