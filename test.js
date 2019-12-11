@@ -39,7 +39,7 @@ const performTest = (title, input, output) => {
     if (actual !== expected) {
       process.stdout.write('x')
       return [
-        `Failed test "${title}": ${colors.brightYellow(input)}`,
+        `Failed test "${title}":\n${colors.brightYellow(input.join('\n'))}`,
         `${colors.green(`"${expected}"`)}`,
         `${colors.red(`"${actual}"`)}`,
         ``,
