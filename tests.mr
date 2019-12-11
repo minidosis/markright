@@ -255,8 +255,8 @@
   @input{1@@}
   @output{Line(1@)}
 
-@test(same delimiter nested)
+@test(same delimiter nested... think about this!)
   @input
     @a{@b{@c}}
   @output
-    Line(@a{@b{@c}})
+    @a{@b{@c}}
