@@ -144,9 +144,8 @@ class Parser {
       case Line:
         if (item.isSingleCommand()) {
           return executeCommand(item.children[0])
-        } else {
-          item.executeAllCommands(executeCommand)
         }
+        item.executeAllCommands(executeCommand)
         return item
       case InlineCommand:
       case BlockCommand:
@@ -298,11 +297,13 @@ class Parser {
         itemList.push(new Line())
         pendingEmptyLine = false
       }
+      // line does not start with a command
       if (line[0] !== commandChar) {
         blockCommand = null
         itemList.push(this.parseLine(line))
         continue
       }
+      // line starts with a command
       blockCommand = null
       const item = this.parseLine(line)
       if (item instanceof BlockCommand) {
@@ -333,8 +334,9 @@ module.exports = {
   parseRecur,
   parseFile,
   parseFileRecur,
+  Item,
   Line,
   Command,
-  InlineCommand,
   BlockCommand,
+  InlineCommand,
 }

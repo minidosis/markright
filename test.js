@@ -2,6 +2,8 @@
 const MR = require('./markright')
 const colors = require('colors');
 
+const write = (...args) => process.stdout.write(...args)
+
 const performTest = (title, input, output) => {
   const print = (x) => {
     switch (x.constructor) {
@@ -71,12 +73,11 @@ MR.parseFile(testfile, {
       throw new Error(`Error in test ${testName}: Input or output is empty!`)
     }
     const errs = performTest(testName, input, output)
-    if (errs) {
-      errors.push(...errs)
-    }
+    if (errs) errors.push(...errs)
   }
 })
-console.log()
+
+write('\n')
 if (errors.length > 0) {
-  console.log(`\n${errors.join('\n')}`)
+  write(`\n${errors.join('\n')}\n`)
 }
