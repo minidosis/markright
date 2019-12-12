@@ -40,7 +40,7 @@ class Text extends Item {
     super()
     this.text = text
   }
-  toJson() { return this.text }
+  toJson() { return `"${this.text}"` }
 }
 
 class _List extends Item {
@@ -84,12 +84,12 @@ class Command extends Item {
     if (args) this.args = args
   }
   toJson() {
-    return JSON.stringify({
-      cmd: this.name,
-      args: this.args,
-      children: this.children,
-      delim: this.delim
-    })
+    let json = `{"cmd":"${this.name}"`
+    if (this.args) json += `,"args":[${this.args.map(x => `"${x}"`).join(',')}]`
+    if (this.children) json += `,"children":${this.children.toJson()}`
+    if (this.delim) json += `,"delim":{"open":"${this.delim.open}","close":"${this.delim.close}"`
+    json += `}`
+    return json
   }
 }
 

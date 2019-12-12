@@ -10,3 +10,16 @@
     @c@d
   @output
     [[{"cmd":"a"},{"cmd":"b"}],[{"cmd":"c"},{"cmd":"d"}]]
+
+@json-test
+  @input
+    @a(1,2)
+  @output
+    [{"cmd":"a","args":["1","2"]}]
+
+@json-test
+  @input
+    @a(x)
+      some text
+  @output
+    [{"cmd":"a","args":["x"],"children":[["some text"]]}]
