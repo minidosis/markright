@@ -1,0 +1,266 @@
+
+@parse-test(simple text)
+  @input
+    hi
+  @output
+    Block(Line(hi))
+
+@parse-test(two lines)
+  @input
+    hi
+    ho
+  @output
+    Block(Line(hi)Line(ho))
+
+@parse-test(Empty line)
+  @input
+    first
+    
+    third
+  @output
+    Block(Line(first)Line()Line(third))
+
+@parse-test(simple command)
+  @input{@something}
+  @output{Block(@something)}
+
+@parse-test(three inline commands)
+  @input
+    @a@b@c
+  @output
+    Block(Line(@a@b@c))
+
+@parse-test(spaces between inline commands)
+  @input{@a  @b@c}
+  @output{Block(Line(@a  @b@c))}
+
+@parse-test(spaces between inline commands 2)
+  @input
+    @a @b @c
+  @output
+    Block(Line(@a @b @c))
+
+@parse-test(text and inline commands)
+  @input{some text@a @b @c}
+  @output
+    Block(Line(some text@a @b @c))
+
+@parse-test(two lines with inline commands)
+  @input
+    @a@b@c
+    @d@e
+  @output
+    Block(Line(@a@b@c)Line(@d@e))
+
+@parse-test(remove spaces in arguments)
+  @input
+    @cmd(a,b,,c)
+  @output
+    Block(@cmd(a,b,,c))
+
+@parse-test(remove spaces in arguments 2)
+  @input
+    @mycmd(a =  3,b...,+ +c + +)
+      blis blas blus
+  @output
+    Block(@mycmd(a =  3,b...,+ +c + +):Block(Line(blis blas blus)))
+
+@parse-test(text outside and inside)
+  @input
+    Text outside
+    @cmd
+      Text inside
+  @output
+    Block(Line(Text outside)@cmd:Block(Line(Text inside)))
+
+@parse-test(empty line at the beginning)
+  @input
+    
+    @emptylineatbeginning
+  @output
+    Block(Line()@emptylineatbeginning)
+
+@parse-test(two empty lines at different levels)
+  @input
+    
+    @something
+      
+      Yay
+  @output
+    Block(Line()@something:Block(Line()Line(Yay)))
+
+@parse-test(Command with block subcommands)
+  @input
+    
+    @main
+      @a
+      @b
+      @c
+  @output
+    Block(Line()@main:Block(@a@b@c))
+
+@parse-test(Command with inline subcommands)
+  @input
+    
+    @main
+      @a@b@c
+  @output
+    Block(Line()@main:Block(Line(@a@b@c)))
+
+@parse-test(Command with several lines)
+  @input
+    
+    @main
+      a
+      b
+      c
+  @output
+    Block(Line()@main:Block(Line(a)Line(b)Line(c)))
+
+@parse-test(Empty lines in subcommand)
+  @input
+    @main
+      abc
+      
+      def
+  @output
+    Block(@main:Block(Line(abc)Line()Line(def)))
+
+@parse-test(Indentation in inner text)
+  @input
+    @command
+      1st
+        2nd
+      3rd
+  @output
+    Block(@command:Block(Line(1st)Line(  2nd)Line(3rd)))
+
+@parse-test(Indentation in inner text 2)
+  @input
+    @command
+        1st
+        2nd
+      3rd
+  @output
+    Block(@command:Block(Line(  1st)Line(  2nd)Line(3rd)))
+
+@parse-test(Different delimiters 1)
+  @input
+    @a{[]}@b[{}]
+  @output
+    Block(Line(@a{[]}@b[{}]))
+
+@parse-test(Different delimiters 2)
+  @input
+    @a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>
+  @output
+    Block(Line(@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>))
+
+@parse-test(Different delimiters 3 + no line)
+  @input{@aaa[@bbb<@ccc>]}
+  @output
+    Block(@aaa[@bbb<@ccc>])
+
+@parse-test(Nested block commands)
+  @input
+    @a
+      @b
+        @c
+  @output
+    Block(@a:Block(@b:Block(@c)))
+
+@parse-test(More nested block commands FIXME)
+  @input
+    @a
+      @b
+        @c
+      @d
+        @e
+          @f
+  @output
+    Block(@a:Block(@b:Block(@c)@d:Block(@e:Block(@f))))
+
+@parse-test(C++ hello world)
+  @input
+    @code
+      #include<iostream>
+      using namespace std;
+      
+      int main() {
+        cout << "hi" << endl;
+      }
+  @output
+    Block(@code:Block(Line(#include<iostream>)Line(using namespace std;)Line()Line(int main() {)Line(  cout << "hi" << endl;)Line(})))
+
+@parse-test(Where empty lines attach 1)
+  @input
+    @first
+      1
+    
+    @second
+      2
+  
+  @output
+    Block(@first:Block(Line(1))Line()@second:Block(Line(2)))
+
+@parse-test(Where empty lines attach 2)
+  @input
+    @a
+      1
+    @b
+      2
+    
+    @c
+      3
+      
+    
+    @d
+      4
+  
+  @output
+    Block(@a:Block(Line(1))@b:Block(Line(2))Line()@c:Block(Line(3)Line())Line()@d:Block(Line(4)))
+
+@parse-test(Where empty lines attach 3)
+  @input
+    @a
+      1
+      
+      
+    
+    @b
+  
+  @output
+    Block(@a:Block(Line(1)Line()Line())Line()@b)
+  
+
+@parse-test(Where empty lines attach 4)
+  @input
+    @a
+    
+    
+    @b
+  
+  @output
+    Block(@aLine()Line()@b)
+
+@parse-test(Nested inline commands)
+  @input
+    @big[@a{1}@b{2}@c@d{@e<3>}]
+  @output
+    Block(@big[Line(@a{1}@b{2}@c@d{@e<3>})])
+
+@parse-test(Command char)
+  @input{@@}
+  @output{Block(Line(@undefined))}
+
+@parse-test(Command char 2)
+  @input{1@}
+  @output{Block(Line(1@undefined))}
+
+@parse-test(numbers and dashes in commands)
+  @input
+    @a123@123a
+    @--dashes--(1)
+  @output
+    Block(Line(@a123@123a)@--dashes--(1))
+  
