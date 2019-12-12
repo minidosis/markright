@@ -1,0 +1,12 @@
+@json-test(simple command)
+  @input
+    @a
+  @output
+    [{"cmd":"a"}]
+
+@json-test
+  @input
+    @a@b
+    @c@d
+  @output
+    [[{"cmd":"a"},{"cmd":"b"}],[{"cmd":"c"},{"cmd":"d"}]]

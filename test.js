@@ -60,8 +60,8 @@ const parseTest = (input, output) => ({
 })
 
 const jsonTest = (input, output) => ({
-  actual: JSON.stringify(MR.parseRecur(input)),
-  expected: output,
+  actual: MR.parseRecur(input).toJson(),
+  expected: output.join('\n'),
 })
 
 const testParser = (testFunc, errors) => (args, rawChildren) => {

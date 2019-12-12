@@ -32,6 +32,7 @@ class Item {
   addRaw(str) { this.rawChildren = [...(this.rawChildren || []), str] }
   hasRawChildren() { return Array.isArray(this.rawChildren) }
   add(str) { this.children = [...(this.children || []), str] }
+  toJson() { throw new Error(`Item.toJson is abstract! (obj = ${JSON.stringify(this)})`) }
 }
 
 class Text extends Item {
@@ -39,20 +40,22 @@ class Text extends Item {
     super()
     this.text = text
   }
+  toJson() { return this.text }
 }
 
-class Block extends Item {
-  constructor(lines) { 
-    super()
-    this.children = lines 
-  }
-}
-
-class Line extends Item { // = List<InlineItem>
+class _List extends Item {
   constructor(children) {
     super()
     if (children) this.children = children
   }
+  toJson() {
+    return `[${this.children.map(x => x.toJson()).join(',')}]`
+  }
+}
+
+class Block extends _List { }
+
+class Line extends _List { // = List<InlineItem>
   add(item) { this.children = [...(this.children || []), item] }
 
   isSingle() { return this.children && this.children.length === 1 }
@@ -80,12 +83,20 @@ class Command extends Item {
     if (name) this.name = name
     if (args) this.args = args
   }
+  toJson() {
+    return JSON.stringify({
+      cmd: this.name,
+      args: this.args,
+      children: this.children,
+      delim: this.delim
+    })
+  }
 }
 
-class BlockCommand extends Command { 
+class BlockCommand extends Command {
   toInlineCommand() {
     return new InlineCommand(this.name, this.args)
-  }  
+  }
 }
 
 class InlineCommand extends Command {
