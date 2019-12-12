@@ -254,9 +254,3 @@
 @test(Command char 2)
   @input{1@@}
   @output{Line(1@)}
-
-@test(same delimiter nested... think about this!)
-  @input
-    @a{@b{@c}}
-  @output
-    @a{@b{@c}}
