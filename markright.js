@@ -34,6 +34,20 @@ class Item {
   add(str) { this.children = [...(this.children || []), str] }
 }
 
+class Text extends Item {
+  constructor(text) {
+    super()
+    this.text = text
+  }
+}
+
+class Block extends Item {
+  constructor(lines) { 
+    super()
+    this.children = lines 
+  }
+}
+
 class Line extends Item { // = List<InlineItem>
   constructor(children) {
     super()
@@ -227,7 +241,7 @@ class Parser {
       } else {
         i++
         if (acumText) {
-          line.add(acumText)
+          line.add(new Text(acumText))
           acumText = ''
         }
         const name = parseName()
@@ -242,7 +256,7 @@ class Parser {
       }
     }
     if (!allSpaces(acumText)) {
-      line.add(acumText)
+      line.add(new Text(acumText))
     }
     // If we have a single command without children, return a BlockCommand
     if (line.isSingleBlockCommand()) {
@@ -314,7 +328,7 @@ class Parser {
     if (pendingEmptyLine) {
       itemList.push(new Line())
     }
-    return itemList.map(this.execute)
+    return new Block(itemList.map(this.execute))
   }
 }
 
@@ -335,7 +349,9 @@ module.exports = {
   parseFile,
   parseFileRecur,
   Item,
+  Text,
   Line,
+  Block,
   Command,
   BlockCommand,
   InlineCommand,

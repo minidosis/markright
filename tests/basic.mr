@@ -1,93 +1,94 @@
-@test(simple text)
+@parse-test(simple text)
   @input
     hi
   @output
-    Line(hi)
+    Block(Line(hi))
 
-@test(two lines)
+@parse-test(two lines)
   @input
     hi
     ho
   @output
-    Line(hi)Line(ho)
+    Block(Line(hi)Line(ho))
 
-@test(Empty line)
+@parse-test(Empty line)
   @input
     first
 
     third
-  @output{Line(first)Line()Line(third)}
+  @output
+    Block(Line(first)Line()Line(third))
 
-@test(simple command)
+@parse-test(simple command)
   @input{@something}
-  @output{@something}
+  @output{Block(@something)}
 
-@test(three inline commands)
+@parse-test(three inline commands)
   @input
     @a@b@c
   @output
-    Line(@a@b@c)
+    Block(Line(@a@b@c))
 
-@test(spaces between inline commands)
+@parse-test(spaces between inline commands)
   @input{@a  @b@c}
-  @output{Line(@a  @b@c)}
+  @output{Block(Line(@a  @b@c))}
 
-@test(spaces between inline commands 2)
+@parse-test(spaces between inline commands 2)
   @input
     @a @b @c
   @output
-    Line(@a @b @c)
+    Block(Line(@a @b @c))
       
-@test(text and inline commands)
+@parse-test(text and inline commands)
   @input{some text@a @b @c}
   @output
-    Line(some text@a @b @c)
+    Block(Line(some text@a @b @c))
   
-@test(two lines with inline commands)
+@parse-test(two lines with inline commands)
   @input
     @a@b@c
     @d@e
   @output
-    Line(@a@b@c)Line(@d@e)
+    Block(Line(@a@b@c)Line(@d@e))
 
-@test(remove spaces in arguments)
+@parse-test(remove spaces in arguments)
   @input
     @cmd(   a   ,    b  ,, c )
   @output
-    @cmd(a,b,,c)
+    Block(@cmd(a,b,,c))
 
-@test(remove spaces in arguments 2)
+@parse-test(remove spaces in arguments 2)
   @input
     @mycmd( a =  3 , b... ,  + +c + + )
       blis blas blus
   @output
-    @mycmd(a =  3,b...,+ +c + +)`Line(blis blas blus)`
+    Block(@mycmd(a =  3,b...,+ +c + +):Block(Line(blis blas blus)))
 
-@test(text outside and inside)
+@parse-test(text outside and inside)
   @input
     Text outside
     @cmd
       Text inside
   @output
-    Line(Text outside)@cmd`Line(Text inside)`
+    Block(Line(Text outside)@cmd:Block(Line(Text inside)))
 
-@test(empty line at the beginning)
+@parse-test(empty line at the beginning)
   @input
 
     @emptylineatbeginning
   @output 
-    Line()@emptylineatbeginning
+    Block(Line()@emptylineatbeginning)
 
-@test(two empty lines at different levels)
+@parse-test(two empty lines at different levels)
   @input
 
     @something
   
       Yay
   @output
-    Line()@something`Line()Line(Yay)`
+    Block(Line()@something:Block(Line()Line(Yay)))
 
-@test(Command with block subcommands)
+@parse-test(Command with block subcommands)
   @input
 
     @main
@@ -95,17 +96,17 @@
       @b
       @c
   @output
-    Line()@main`@a@b@c`
+    Block(Line()@main:Block(@a@b@c))
 
-@test(Command with inline subcommands)
+@parse-test(Command with inline subcommands)
   @input
 
     @main
       @a@b@c
   @output
-    Line()@main`Line(@a@b@c)`
+    Block(Line()@main:Block(Line(@a@b@c)))
 
-@test(Command with several lines)
+@parse-test(Command with several lines)
   @input
 
     @main
@@ -113,61 +114,61 @@
       b
       c
   @output
-    Line()@main`Line(a)Line(b)Line(c)`
+    Block(Line()@main:Block(Line(a)Line(b)Line(c)))
   
-@test(Empty lines in subcommand)
+@parse-test(Empty lines in subcommand)
   @input
     @main
       abc
 
       def
   @output
-    @main`Line(abc)Line()Line(def)`
+    Block(@main:Block(Line(abc)Line()Line(def)))
   
-@test(Indentation in inner text)
+@parse-test(Indentation in inner text)
   @input
     @command
       1st
         2nd
       3rd
   @output
-    @command`Line(1st)Line(  2nd)Line(3rd)`
+    Block(@command:Block(Line(1st)Line(  2nd)Line(3rd)))
       
-@test(Indentation in inner text 2)
+@parse-test(Indentation in inner text 2)
   @input
     @command
         1st
         2nd
       3rd
   @output
-    @command`Line(  1st)Line(  2nd)Line(3rd)`
+    Block(@command:Block(Line(  1st)Line(  2nd)Line(3rd)))
 
-@test(Different delimiters 1)
+@parse-test(Different delimiters 1)
   @input
     @a{[]}@b[{}]
   @output
-    Line(@a{[]}@b[{}])
+    Block(Line(@a{[]}@b[{}]))
 
-@test(Different delimiters 2)
+@parse-test(Different delimiters 2)
   @input 
     @a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>
   @output
-    Line(@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>)
+    Block(Line(@a<A>@b<<B>>@c<<<C>>>@d<<<<D>>>>))
 
-@test(Different delimiters 3 + no line)
+@parse-test(Different delimiters 3 + no line)
   @input{@aaa[@bbb<@ccc>]}
   @output
-    @aaa[@bbb<@ccc>]
+    Block(@aaa[@bbb<@ccc>])
 
-@test(Nested block commands)
+@parse-test(Nested block commands)
   @input
     @a
       @b
         @c
   @output
-    @a`@b`@c``
+    Block(@a:Block(@b:Block(@c)))
 
-@test(More nested block commands FIXME)
+@parse-test(More nested block commands FIXME)
   @input
     @a
       @b
@@ -176,9 +177,9 @@
         @e
           @f
   @output
-    @a`@b`@c`@d`@e`@f```
+    Block(@a:Block(@b:Block(@c)@d:Block(@e:Block(@f))))
 
-@test(C++ hello world)
+@parse-test(C++ hello world)
   @input
     @code
       #include<iostream>
@@ -188,9 +189,9 @@
         cout << "hi" << endl;
       }
   @output
-    @code`Line(#include<iostream>)Line(using namespace std;)Line()Line(int main() {)Line(  cout << "hi" << endl;)Line(})`
+    Block(@code:Block(Line(#include<iostream>)Line(using namespace std;)Line()Line(int main() {)Line(  cout << "hi" << endl;)Line(})))
 
-@test(Where empty lines attach 1)
+@parse-test(Where empty lines attach 1)
   @input
     @first
       1
@@ -199,9 +200,9 @@
       2
 
   @output
-    @first`Line(1)`Line()@second`Line(2)`
+    Block(@first:Block(Line(1))Line()@second:Block(Line(2)))
 
-@test(Where empty lines attach 2)
+@parse-test(Where empty lines attach 2)
   @input
     @a
       1
@@ -216,9 +217,9 @@
       4
 
   @output
-    @a`Line(1)`@b`Line(2)`Line()@c`Line(3)Line()`Line()@d`Line(4)`
+    Block(@a:Block(Line(1))@b:Block(Line(2))Line()@c:Block(Line(3)Line())Line()@d:Block(Line(4)))
 
-@test(Where empty lines attach 3)
+@parse-test(Where empty lines attach 3)
   @input
     @a
       1
@@ -228,10 +229,10 @@
     @b
 
   @output
-    @a`Line(1)Line()Line()`Line()@b
+    Block(@a:Block(Line(1)Line()Line())Line()@b)
 
 
-@test(Where empty lines attach 4)
+@parse-test(Where empty lines attach 4)
   @input
     @a
 
@@ -239,26 +240,26 @@
     @b
 
   @output
-    @aLine()Line()@b
+    Block(@aLine()Line()@b)
 
-@test(Nested inline commands)
+@parse-test(Nested inline commands)
   @input
     @big[@a{1}@b{2}@c@d{@e<3>}]
   @output
-    @big[Line(@a{1}@b{2}@c@d{@e<3>})]
+    Block(@big[Line(@a{1}@b{2}@c@d{@e<3>})])
 
-@test(Command char)
+@parse-test(Command char)
   @input{@@}
-  @output{Line(@)}
+  @output{Block(Line(@))}
 
-@test(Command char 2)
+@parse-test(Command char 2)
   @input{1@@}
-  @output{Line(1@)}
+  @output{Block(Line(1@))}
 
-@test(numbers and dashes in commands)
+@parse-test(numbers and dashes in commands)
   @input
     @a123@123a
     @--dashes--(1)
   @output
-    Line(@a123@123a)@--dashes--(1)
+    Block(Line(@a123@123a)@--dashes--(1))
 

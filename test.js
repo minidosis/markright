@@ -7,17 +7,17 @@ const write = (...args) => process.stdout.write(...args)
 
 const print = (x) => {
   switch (x.constructor) {
-    case String:
-      return x
-    case Array:
-      return `${x.map(print).join('')}`
+    case MR.Text:
+      return `${x.text}`
+    case MR.Block:
+      return `Block(${x.children.map(print).join('')})`
     case MR.Line:
       return `Line(${x.children ? x.children.map(print).join('') : ''})`
     case MR.BlockCommand: {
       let result = `@${x.name}`
       if (x.args) result += `(${x.args.join(',')})`
       if (x.children) {
-        result += `\`${print(x.children)}\``
+        result += `:${print(x.children)}`
       }
       return result
     }
@@ -30,17 +30,15 @@ const print = (x) => {
       return result
     }
     default:
-      throw new Error(`Unexpected object of type ${x.constructor}`)
+      throw new Error(`Unexpected object of type -- ${x.constructor}`)
   }
 }
 
-const performTest = (title, input, output) => {
+const report = (title, input, fn) => {
   try {
-    const parsed = MR.parseRecur(input)
-    const actual = parsed.map(print).join('')
-    const expected = output.join('\n')
+    const { actual, expected } = fn()
     if (actual !== expected) {
-      process.stdout.write('x')
+      write('x')
       return [
         `Test "${title}" failed:\n${colors.brightYellow(input.join('\n'))}`,
         `${colors.green(`"${expected}"`)}`,
@@ -48,33 +46,44 @@ const performTest = (title, input, output) => {
         ``,
       ]
     } else {
-      process.stdout.write('.')
+      write('.')
     }
   } catch (e) {
-    process.stdout.write('x')
+    write('x')
     return [`Test "${title}" failed with exception:`, e.toString(), ``]
   }
 }
 
-const processTestFile = (testfile) => {
-  let errors = []
+const parseTest = (input, output) => ({
+  actual: print(MR.parseRecur(input)),
+  expected: output.join('\n'),
+})
 
-  MR.parseFile(testfile, {
-    'test': (args, testBody) => {
-      const testName = args[0]
-      let input, output;
-      MR.parse(testBody, {
-        'input': (_, rawChildren) => input = rawChildren,
-        'output': (_, rawChildren) => output = rawChildren,
-      })
-      if (!input || !output) {
-        throw new Error(`Error in test "${testName}": Input or output is empty!`)
-      }
-      const errs = performTest(testName, input, output)
-      if (errs) errors.push(...errs)
-    }
+const jsonTest = (input, output) => ({
+  actual: JSON.stringify(MR.parseRecur(input)),
+  expected: output,
+})
+
+const testParser = (testFunc, errors) => (args, rawChildren) => {
+  const testName = (args && args[0]) || ''
+  let input, output;
+  MR.parse(rawChildren, {
+    'input': (_, rawChildren) => input = rawChildren,
+    'output': (_, rawChildren) => output = rawChildren,
   })
+  if (!input || !output) {
+    throw new Error(`Error in test "${testName}": Input or output is empty!`)
+  }
+  const errs = report(testName, input, () => testFunc(input, output))
+  if (errs) errors.push(...errs)
+}
 
+const runTest = (testfile) => {
+  let errors = []
+  MR.parseFile(testfile, {
+    'parse-test': testParser(parseTest, errors),
+    'json-test': testParser(jsonTest, errors),
+  })
   write('\n')
   if (errors.length > 0) {
     write(`\n${errors.join('\n')}\n`)
@@ -91,7 +100,7 @@ fs.readdir('./tests', (err, files) => {
   const maxLength = testfiles.reduce((mx, f) => Math.max(mx, f.length), 0)
   testfiles.forEach((testfile) => {
     write(`${testfile}${' '.repeat(maxLength + 1 - testfile.length)}`)
-    processTestFile(`tests/${testfile}`)
+    runTest(`tests/${testfile}`)
   })
 })
 
