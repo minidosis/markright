@@ -4,22 +4,57 @@
   @output
     [{"cmd":"a"}]
 
-@json-test
+@json-test(two lines with inline commands)
   @input
     @a@b
     @c@d
   @output
     [[{"cmd":"a"},{"cmd":"b"}],[{"cmd":"c"},{"cmd":"d"}]]
 
-@json-test
+@json-test(arguments)
   @input
     @a(1,2)
   @output
     [{"cmd":"a","args":["1","2"]}]
 
-@json-test
+@json-test(arguments in a block command)
   @input
     @a(x)
-      some text
+      y
   @output
-    [{"cmd":"a","args":["x"],"children":[["some text"]]}]
+    [{"cmd":"a","args":["x"],"children":[["y"]]}]
+
+@json-test(more lines inside)
+  @input
+    @a(x)
+      y
+      z
+  @output
+    [{"cmd":"a","args":["x"],"children":[["y"],["z"]]}]
+  
+@json-test(two block commands with args)
+  @input
+    @a(x, y, z)
+      bli
+    @b(u,v,w)
+      blo
+  @output
+    [{"cmd":"a","args":["x","y","z"],"children":[["bli"]]},{"cmd":"b","args":["u","v","w"],"children":[["blo"]]}]
+
+@json-test(inline commands with args)
+  @input
+    @a(1)@b(2)
+  @output
+    [[{"cmd":"a","args":["1"]},{"cmd":"b","args":["2"]}]]
+
+@json-test(inline command with children)
+  @input
+    @a(1){yay@b}
+  @output
+    [{"cmd":"a","args":["1"],"delim":{"open":"{","close":"}"},"children":["yay",{"cmd":"b"}]}]
+
+@json-test(inline command with children)
+  @input
+    @a{@b(3)<x>}
+  @output
+    [{"cmd":"a","delim":{"open":"{","close":"}"},"children":{"cmd":"b","args":["3"],"delim":{"open":"<","close":">"},"children":"x"}}]

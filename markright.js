@@ -86,8 +86,8 @@ class Command extends Item {
   toJson() {
     let json = `{"cmd":"${this.name}"`
     if (this.args) json += `,"args":[${this.args.map(x => `"${x}"`).join(',')}]`
+    if (this.delim) json += `,"delim":{"open":"${this.delim.open}","close":"${this.delim.close}"}`
     if (this.children) json += `,"children":${this.children.toJson()}`
-    if (this.delim) json += `,"delim":{"open":"${this.delim.open}","close":"${this.delim.close}"`
     json += `}`
     return json
   }
