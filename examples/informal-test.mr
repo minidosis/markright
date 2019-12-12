@@ -1,8 +1,8 @@
-@member(c, d, e){{laksdf @boo(a  ,   b){@yeye xxx @y} fj12 312321}}
+@member(c, d, e){laksdf @boo(a  ,   b)[@yeye xxx @y] fj12 312321}
 a @b @c @d{@e(x,y,z)[@f(f,f)@g(g)<< @h<@i> >>]} e
 
 @abc
-  This is a normal line @bla<<<<{}<>[]>>>>
+  This is a normal line @bla{<<>>}
   Another line
 
 @cba

@@ -1,6 +1,6 @@
 
-const fs = require('fs')
 const mr = require('../markright')
 
-const obj1 = mr.parseFileRecur('informal-test.mr')
-console.log(JSON.stringify(obj1, null, 2))
+const obj = mr.parseFileRecur('informal-test.mr')
+console.log(JSON.stringify(JSON.parse(obj.toJson()), null, 2))
+console.log(obj.toString())

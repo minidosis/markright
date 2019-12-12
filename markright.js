@@ -33,6 +33,7 @@ class Item {
   hasRawChildren() { return Array.isArray(this.rawChildren) }
   add(str) { this.children = [...(this.children || []), str] }
   toJson() { throw new Error(`Item.toJson is abstract! (obj = ${JSON.stringify(this)})`) }
+  toString() { throw new Error(`Item.toString is abstract! (obj = ${JSON.stringify(this)})`) }
 }
 
 class Text extends Item {
@@ -41,6 +42,7 @@ class Text extends Item {
     this.text = text
   }
   toJson() { return `"${this.text}"` }
+  toString() { return this.text }
 }
 
 class _List extends Item {
@@ -49,11 +51,15 @@ class _List extends Item {
     if (children) this.children = children
   }
   toJson() {
-    return `[${this.children.map(x => x.toJson()).join(',')}]`
+    return `[${this.children ? this.children.map(x => x.toJson()).join(',') : ''}]`
   }
 }
 
-class Block extends _List { }
+class Block extends _List { 
+  toString() {
+    return this.children.map(x => x.toString()).join('\n')
+  }
+}
 
 class Line extends _List { // = List<InlineItem>
   add(item) { this.children = [...(this.children || []), item] }
@@ -74,6 +80,9 @@ class Line extends _List { // = List<InlineItem>
         return (item instanceof Command ? execFunc(item) : item)
       })
     }
+  }
+  toString() {
+    return (this.children ? this.children.map(x => x.toString()).join('') : '')
   }
 }
 
@@ -97,6 +106,11 @@ class BlockCommand extends Command {
   toInlineCommand() {
     return new InlineCommand(this.name, this.args)
   }
+  toString() {
+    const toStringWithIndent = (item) => '  ' + item.toString()
+    return `@${this.name}${this.args ? `(${this.args.join(',')})` : ''}\n` +
+      (this.children ? this.children.toString() : '')
+  }
 }
 
 class InlineCommand extends Command {
@@ -106,6 +120,13 @@ class InlineCommand extends Command {
     if (delim) this.delim = delim
   }
   toInlineCommand() { return this }
+  toString() {
+    let str = `@${this.name}${this.args ? `(${this.args.join(',')})` : ''}`
+    if (this.delim) {
+      str += `${this.delim.open}${this.children ? this.children.toString() : ''}${this.delim.close}`
+    }
+    return str
+  }
 }
 
 // Parser
