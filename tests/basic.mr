@@ -254,3 +254,11 @@
 @test(Command char 2)
   @input{1@@}
   @output{Line(1@)}
+
+@test(numbers and dashes in commands)
+  @input
+    @a123@123a
+    @--dashes--(1)
+  @output
+    Line(@a123@123a)@--dashes--(1)
+
