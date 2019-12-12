@@ -58,3 +58,10 @@
     @a{@b(3)<x>}
   @output
     [{"cmd":"a","delim":{"open":"{","close":"}"},"children":{"cmd":"b","args":["3"],"delim":{"open":"<","close":">"},"children":"x"}}]
+
+@json-test(at sign)
+  @input
+    @@
+    @@@a
+  @output
+    [["@"],["@",{"cmd":"a"}]]
