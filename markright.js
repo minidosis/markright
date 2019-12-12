@@ -33,7 +33,6 @@ class Item {
   hasRawChildren() { return Array.isArray(this.rawChildren) }
   add(str) { this.children = [...(this.children || []), str] }
   toJson() { throw new Error(`Item.toJson is abstract! (obj = ${JSON.stringify(this)})`) }
-  toString() { throw new Error(`Item.toString is abstract! (obj = ${JSON.stringify(this)})`) }
 }
 
 class Text extends Item {
@@ -42,7 +41,6 @@ class Text extends Item {
     this.text = text
   }
   toJson() { return `"${this.text}"` }
-  toString() { return this.text }
 }
 
 class _List extends Item {
@@ -55,10 +53,7 @@ class _List extends Item {
   }
 }
 
-class Block extends _List { 
-  toString() {
-    return this.children.map(x => x.toString()).join('\n')
-  }
+class Block extends _List {
 }
 
 class Line extends _List { // = List<InlineItem>
@@ -80,9 +75,6 @@ class Line extends _List { // = List<InlineItem>
         return (item instanceof Command ? execFunc(item) : item)
       })
     }
-  }
-  toString() {
-    return (this.children ? this.children.map(x => x.toString()).join('') : '')
   }
 }
 
@@ -106,11 +98,6 @@ class BlockCommand extends Command {
   toInlineCommand() {
     return new InlineCommand(this.name, this.args)
   }
-  toString() {
-    const toStringWithIndent = (item) => '  ' + item.toString()
-    return `@${this.name}${this.args ? `(${this.args.join(',')})` : ''}\n` +
-      (this.children ? this.children.toString() : '')
-  }
 }
 
 class InlineCommand extends Command {
@@ -120,13 +107,6 @@ class InlineCommand extends Command {
     if (delim) this.delim = delim
   }
   toInlineCommand() { return this }
-  toString() {
-    let str = `@${this.name}${this.args ? `(${this.args.join(',')})` : ''}`
-    if (this.delim) {
-      str += `${this.delim.open}${this.children ? this.children.toString() : ''}${this.delim.close}`
-    }
-    return str
-  }
 }
 
 // Parser
@@ -375,11 +355,73 @@ const _parseFile = parse => (filename, funcMap) => {
 const parseFile = _parseFile(parse)
 const parseFileRecur = _parseFile(parseRecur)
 
+const stringify = (mr) => {
+  let indent = 0
+  let line = ''
+  let result = ''
+
+  const add = (x) => line += x
+  const newLine = () => {
+    result += line + '\n'
+    line = ' '.repeat(indent * 2)
+  }
+
+  const _stringify = (x) => {
+    if (x === null || x === undefined) {
+      return '';
+    }
+    switch (x.constructor) {
+      case Text: {
+        if (x.text === '@') add('@@')
+        else add(x.text)
+        break
+      }
+      case Block: {
+        x.children.forEach(item => {
+          newLine()
+          _stringify(item) 
+        })
+        break
+      }
+      case Line: {
+        if (x.children) x.children.map(_stringify)
+        break
+      }
+      case BlockCommand: {
+        const { name, args, children } = x
+        add(`@${name}`)
+        if (args) add(`(${args.join(',')})`)
+        indent++
+        _stringify(children)
+        indent--
+        break
+      }
+      case InlineCommand: {
+        const { name, args, delim, children } = x
+        add(`@${name}`)
+        if (args) add(`(${args.join(',')})`)
+        if (delim) {
+          add(delim.open)
+          _stringify(children)
+          add(delim.close)
+        }
+        break
+      }
+      default:
+        throw new Error(`stringify of an unknown type! (obj = ${JSON.stringify(x)})`)
+    }
+  }
+
+  _stringify(mr)
+  return result
+}
+
 module.exports = {
   parse,
   parseRecur,
   parseFile,
   parseFileRecur,
+  stringify,
   Item,
   Text,
   Line,
