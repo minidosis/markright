@@ -169,6 +169,11 @@ class Parser {
       return (this.recur ? this.parseRawChildren(cmd) : cmd)
     }
 
+    const executeText = (text) => {
+      const fn = this.getFunc('__text__')
+      return (fn ? fn(text.text) : text)
+    }
+
     const executeLine = (line) => {
       if (line.isSingleCommand()) {
         return executeCommand(line.children[0])
@@ -184,8 +189,8 @@ class Parser {
     }
 
     switch (item.constructor) {
-      case String:
-        return item
+      case Text:
+        return executeText(item)
       case Line:
         return executeLine(item)
       case Block:
@@ -194,7 +199,7 @@ class Parser {
       case BlockCommand:
         return executeCommand(item)
       default:
-        throw new Error(`execute: unexpected object of type ${x.constructor}`)
+        throw new Error(`execute: unexpected object of type ${item.constructor}`)
     }
   }
 
@@ -270,7 +275,7 @@ class Parser {
       } else {
         i++
         if (acumText) {
-          line.add(new Text(acumText))
+          line.add(this.execute(new Text(acumText)))
           acumText = ''
         }
         const name = parseName()

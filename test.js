@@ -7,6 +7,8 @@ const write = (...args) => process.stdout.write(...args)
 
 const print = (x) => {
   switch (x.constructor) {
+    case String:
+      return x
     case MR.Text:
       return `${x.text}`
     case MR.Block:
@@ -50,7 +52,7 @@ const report = (title, input, fn) => {
     }
   } catch (e) {
     write('x')
-    return [`Test "${title}" failed with exception:`, e.toString(), ``]
+    return [`Test "${title}" failed with exception:`, e.stack, ``]
   }
 }
 
