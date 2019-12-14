@@ -290,7 +290,7 @@ class Parser {
       }
     }
     if (!allSpaces(acumText)) {
-      line.add(new Text(acumText))
+      line.add(this.execute(new Text(acumText)))
     }
     // If we have a single command without children, return a BlockCommand
     if (line.isSingleBlockCommand()) {
