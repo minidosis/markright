@@ -1,6 +1,4 @@
 
-const fs = require('fs')
-
 const assert = (expr, msg) => {
   if (!expr) {
     throw new Error(`assert failed: ${msg}`)
@@ -387,14 +385,6 @@ class Parser {
 const parse = (lines, funcMap) => new Parser({ funcMap }).parse(lines)
 const parseRecur = (lines, funcMap) => new Parser({ funcMap, recur: true }).parse(lines)
 
-const _parseFile = parse => (filename, funcMap) => {
-  const lines = fs.readFileSync(filename).toString().split('\n')
-  return parse(lines, funcMap)
-}
-
-const parseFile = _parseFile(parse)
-const parseFileRecur = _parseFile(parseRecur)
-
 const stringify = (mr) => {
   let indent = 0
   let line = ''
@@ -459,8 +449,6 @@ const stringify = (mr) => {
 module.exports = {
   parse,
   parseRecur,
-  parseFile,
-  parseFileRecur,
   stringify,
   Item,
   Text,
