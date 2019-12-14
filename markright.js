@@ -248,7 +248,7 @@ class Parser {
       const closeDelim = matchingDelimiter(openDelim)
       let end = lineStr.indexOf(closeDelim, start)
       if (end === -1) {
-        throw new Error(`Expected '${closeDelim}' in '${lineStr.slice(start)}'`)
+        throw new Error(`Parsing line "${lineStr}":\nExpected '${closeDelim}' in '${lineStr.slice(start)}'`)
       }
       i = end + width
       return {
@@ -312,7 +312,8 @@ class Parser {
     const push = (item) => itemList.push(this.execute(item))
     const pushEmptyLine = () => push(new Line())
 
-    for (var line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
       if (emptyLine(line)) {
         // We don't know now where this empty line should go.
         // We will know when we see the indentation of the next line.
@@ -333,7 +334,7 @@ class Parser {
         continue
       }
       const ind = indentation(line)
-      assert(ind % 2 == 0, 'Indentation must be an even number')
+      assert(ind % 2 == 0, `${i}: Indentation must be an even number`)
       if (ind > 0) {
         if (blockCommand === null) {
           push(this.parseLine(line))
