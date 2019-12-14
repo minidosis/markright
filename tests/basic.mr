@@ -262,3 +262,13 @@
     @--dashes--(1)
   @output
     Block(Line(@a123@123a)@--dashes--(1))
+
+@parse-test(graph testcase)
+  @input
+    @table
+      @header
+        id | name
+      1 | peter
+      2 | paul
+  @output
+    Block(@table:Block(@header:Block(Line(id | name))Line(1 | peter)Line(2 | paul)))

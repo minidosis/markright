@@ -351,11 +351,11 @@ class Parser {
         }
         continue
       }
+      if (blockCommand) {
+        push(blockCommand)
+        blockCommand = null
+      }
       if (pendingEmptyLine) {
-        if (blockCommand) {
-          push(blockCommand)
-          blockCommand = null
-        }
         pushEmptyLine()
         pendingEmptyLine = false
       }
