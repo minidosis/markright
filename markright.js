@@ -154,7 +154,7 @@ class Parser {
     if (typeof fn !== 'function') {
       throw new Error(`Command '${name}': not a function`)
     }
-    return fn
+    return fn.bind(this.funcMap)
   }
 
   execute(item) {
