@@ -148,31 +148,48 @@ class Parser {
     return cmd
   }
 
+  getFunc(name) {
+    const fn = this.funcMap && this.funcMap[name]
+    if (fn === undefined) {
+      return
+    }
+    if (typeof fn !== 'function') {
+      throw new Error(`Command '${name}': not a function`)
+    }
+    return fn
+  }
+
   execute(item) {
     const executeCommand = (cmd) => {
-      const fn = this.funcMap && this.funcMap[cmd.name]
-      if (fn === undefined) {
-        if (this.recur) {
-          // recursion implies that executing parses the rawChildren
-          return this.parseRawChildren(cmd)
-        }
-        return cmd
+      const fn = this.getFunc(cmd.name)
+      if (fn) {
+        return fn(cmd.args, cmd.rawChildren)
       }
-      if (typeof fn !== 'function') {
-        throw new Error(`Command '${cmd.name}' is not a function`)
+      // recursion implies that executing parses the rawChildren
+      return (this.recur ? this.parseRawChildren(cmd) : cmd)
+    }
+
+    const executeLine = (line) => {
+      if (line.isSingleCommand()) {
+        return executeCommand(line.children[0])
       }
-      return fn(cmd.args, cmd.rawChildren)
+      line.executeAllCommands(executeCommand)
+      const fn = this.getFunc('__line__')
+      return (fn ? fn(line.children) : line)
+    }
+
+    const executeBlock = (block) => {
+      const fn = this.getFunc('__block__')
+      return (fn ? fn(block.children) : block)
     }
 
     switch (item.constructor) {
       case String:
         return item
       case Line:
-        if (item.isSingleCommand()) {
-          return executeCommand(item.children[0])
-        }
-        item.executeAllCommands(executeCommand)
-        return item
+        return executeLine(item)
+      case Block:
+        return executeBlock(item)
       case InlineCommand:
       case BlockCommand:
         return executeCommand(item)
@@ -289,6 +306,9 @@ class Parser {
     let blockCommand = null
     let pendingEmptyLine = false
 
+    const push = (item) => itemList.push(this.execute(item))
+    const pushEmptyLine = () => push(new Line())
+
     for (var line of lines) {
       if (emptyLine(line)) {
         // We don't know now where this empty line should go.
@@ -299,7 +319,11 @@ class Parser {
           if (blockCommand !== null && blockCommand.hasRawChildren()) {
             blockCommand.addRaw('')
           } else {
-            itemList.push(new Line())
+            if (blockCommand) {
+              push(blockCommand)
+              blockCommand = null
+            }
+            pushEmptyLine()
           }
         }
         pendingEmptyLine = true
@@ -309,7 +333,7 @@ class Parser {
       assert(ind % 2 == 0, 'Indentation must be an even number')
       if (ind > 0) {
         if (blockCommand === null) {
-          itemList.push(this.parseLine(line))
+          push(this.parseLine(line))
         } else {
           if (pendingEmptyLine) {
             blockCommand.addRaw('')
@@ -320,27 +344,38 @@ class Parser {
         continue
       }
       if (pendingEmptyLine) {
-        itemList.push(new Line())
+        if (blockCommand) {
+          push(blockCommand)
+          blockCommand = null
+        }
+        pushEmptyLine()
         pendingEmptyLine = false
       }
       // line does not start with a command
       if (line[0] !== commandChar) {
         blockCommand = null
-        itemList.push(this.parseLine(line))
+        push(this.parseLine(line))
         continue
       }
       // line starts with a command
-      blockCommand = null
+      if (blockCommand) {
+        push(blockCommand)
+        blockCommand = null
+      }
       const item = this.parseLine(line)
       if (item instanceof BlockCommand) {
         blockCommand = item
+      } else {
+        push(item)
       }
-      itemList.push(item)
+    }
+    if (blockCommand) {
+      push(blockCommand)
     }
     if (pendingEmptyLine) {
-      itemList.push(new Line())
+      pushEmptyLine()
     }
-    return new Block(itemList.map(this.execute))
+    return this.execute(new Block(itemList))
   }
 }
 
@@ -379,7 +414,7 @@ const stringify = (mr) => {
       case Block: {
         x.children.forEach(item => {
           newLine()
-          _stringify(item) 
+          _stringify(item)
         })
         break
       }
