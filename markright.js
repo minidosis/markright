@@ -93,6 +93,10 @@ class Command extends Item {
 }
 
 class BlockCommand extends Command {
+  constructor(name, args, children) {
+    super(name, args)
+    if (children) this.children = children
+  }
   toInlineCommand() {
     return new InlineCommand(this.name, this.args)
   }
