@@ -82,7 +82,8 @@ const testParser = (testFunc, errors) => (args, rawChildren) => {
 
 const runTest = (testfile) => {
   let errors = []
-  MR.parseFile(testfile, {
+  const fileContent = fs.readFileSync(testfile).toString()
+  MR.parse(fileContent.split('\n'), {
     'parse-test': testParser(parseTest, errors),
     'json-test': testParser(jsonTest, errors),
   })
