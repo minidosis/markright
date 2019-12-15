@@ -1,4 +1,6 @@
 
+// TODO: Pasar a usar ({ args, children }) para los comandos
+
 const assert = (expr, msg) => {
   if (!expr) {
     throw new Error(`assert failed: ${msg}`)
