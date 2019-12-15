@@ -6,8 +6,8 @@ const splitLines = (str) => {
     throw new Error(`splitLines splits strings: received ${JSON.stringify(str)}`)
   }
   let lines = str.split('\n')
-  if (str[str.length-1] === '\n') {
-    lines = lines.slice(0, lines.length-1)
+  if (str[str.length - 1] === '\n') {
+    lines = lines.slice(0, lines.length - 1)
   }
   return lines
 }
@@ -26,17 +26,17 @@ const escape = (text) => {
 
 class HtmlFuncMap {
 
-  minidosis = (args, children) => `<a href="${"id/" + args[0]}">${parse(children, this)}</a>`
+  minidosis = ({ args, children }) => `<a href="${"id/" + args[0]}">${parse(children, this)}</a>`
 
-  a = (args, children) => `<a href="${args[0]}">${parse(children, this)}</a>`
+  a = ({ args, rawChildren }) => `<a href="${args[0]}">${parse(rawChildren, this)}</a>`
 
-  _direct = tag => (_, children) => `<${tag}>${parse(children, this)}</${tag}>`
+  _direct = tag => ({ rawChildren }) => `<${tag}>${parse(rawChildren, this)}</${tag}>`
 
   b = this._direct('b')
   em = this._direct('em')
   h2 = this._direct('h2')
 
-  olist = (_, rawChildren) => {
+  olist = ({ rawChildren }) => {
     let html = `<div class="enumerate">`
     let num = 1
     const children = splitLines(rawChildren)
@@ -54,7 +54,7 @@ class HtmlFuncMap {
     return html
   }
 
-  ulist = (_, rawChildren) => {
+  ulist = ({ rawChildren }) => {
     let html = `<div class="itemize">`
     const children = splitLines(rawChildren)
     for (let i = 0; i < children.length; i++) {
@@ -70,26 +70,26 @@ class HtmlFuncMap {
     return html
   }
 
-  pre = (args, rawChildren) => {
+  pre = ({ args, rawChildren }) => {
     let [lang, _class] = args ? args : [];
     let html = ''
     html += `<div class="pre ${_class ? _class : ""}">`
     html += `<pre><code class="language-${lang}">`
     html += parse(rawChildren, {
       ...this,
-      __block__: (children) => children,
+      __block__: ({ children }) => children,
       __text__: (text) => escape(text)
     })
     html += `</code></pre></div>`
     return html
   }
 
-  code = (_, children) => `<span class="code">${parse(children, this)}</span>`
-  img = (_, children) => `<img src="asset/${children}" />`
+  code = ({ children }) => `<span class="code">${parse(children, this)}</span>`
+  img = ({ children }) => `<img src="asset/${children}" />`
 
-  box = (_, children) => `<span class="box">${parse(children, this)}</span>`
+  box = ({ children }) => `<span class="box">${parse(children, this)}</span>`
 
-  header = (_, rawChildren) => {
+  header = ({ rawChildren }) => {
     const children = splitLines(rawChildren)
     let html = `<thead><tr>`
     children.forEach(ch => {
@@ -99,18 +99,9 @@ class HtmlFuncMap {
     return html
   }
 
-  row = (_, children) => {
-    let html = `<tr>`
-    html += parse(children, {
-      ...this,
-      __block__: (children) => children,
-      __line__: (children) => `<td>${children.join('')}</td>`,
-    })
-    html += `</tr>`
-    return html
-  }
 
-  footnote = (args, children) => {
+
+  footnote = ({ args, children }) => {
     const footnum = `<span class="footnote">${args[0]}</span>`
     if (children) {
       return `<div class="footnote">${footnum}${parse(children, this)}</div>`
@@ -119,21 +110,29 @@ class HtmlFuncMap {
     }
   }
 
-  table = (args, children) => {
+  table = ({ args, rawChildren }) => {
     let align;
     if (args && args[0] === "left") {
       align = "left"
     }
     let html = `<div class="table">\n`
     html += `<table ${align ? `style="text-align: ${align}"` : ``}>`
-    html += parse(children, this)
+    html += parse(rawChildren, {
+      ...this,
+      row: ({ rawChildren }) => {
+        let html = `<tr>`
+        html += parse(rawChildren, this)
+        html += `</tr>`
+        return html
+      },
+    })
     html += `</table>\n</div>`
     return html
   }
 
-  __text__ = (text) => text
-  __line__ = (children) => children ? children.join('') : ''
-  __block__ = (children) => children ? children.map(x => x ? `<p>${x}</p>` : '').join('\n'): ''
+  __text__ = ({ text }) => text
+  __line__ = ({ children }) => children ? children.join('') : ''
+  __block__ = ({ children }) => children ? children.map(x => x ? `<p>${x}</p>` : '').join('\n') : ''
 
   __command__ = (cmd) => `<span class="error">Cmd <code>"${cmd.name}"</code> not found</span>`
 }

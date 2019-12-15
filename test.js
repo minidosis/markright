@@ -66,12 +66,12 @@ const jsonTest = (input, output) => ({
   expected: output,
 })
 
-const testParser = (testFunc, errors) => (args, rawChildren) => {
+const testParser = (testFunc, errors) => ({ args, rawChildren }) => {
   const testName = (args && args[0]) || ''
   let input, output;
   MR.parse(rawChildren, {
-    'input': (_, rawChildren) => input = rawChildren,
-    'output': (_, rawChildren) => output = rawChildren,
+    'input': ({ rawChildren }) => input = rawChildren,
+    'output': ({ rawChildren }) => output = rawChildren,
   })
   if (!input || !output) {
     throw new Error(`Error in test "${testName}": Input or output is empty!`)

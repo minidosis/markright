@@ -1,6 +1,4 @@
 
-// TODO: Pasar a usar ({ args, children }) para los comandos
-
 const assert = (expr, msg) => {
   if (!expr) {
     throw new Error(`assert failed: ${msg}`)
@@ -179,7 +177,7 @@ class Parser {
     const executeCommand = (cmd) => {
       const fn = this.getFunc(cmd.name)
       if (fn) {
-        return fn(cmd.args, cmd.rawChildren)
+        return fn(cmd)
       }
       // recursion implies that executing parses the rawChildren
       return (this.recur ? this.parseRawChildren(cmd) : cmd)
@@ -187,7 +185,7 @@ class Parser {
 
     const executeText = (text) => {
       const fn = this.getFunc('__text__')
-      return (fn ? fn(text.text) : text)
+      return (fn ? fn(text) : text)
     }
 
     const executeLine = (line) => {
@@ -196,12 +194,12 @@ class Parser {
       }
       line.executeAllCommands(executeCommand)
       const fn = this.getFunc('__line__')
-      return (fn ? fn(line.children) : line)
+      return (fn ? fn(line) : line)
     }
 
     const executeBlock = (block) => {
       const fn = this.getFunc('__block__')
-      return (fn ? fn(block.children) : block)
+      return (fn ? fn(block) : block)
     }
 
     switch (item.constructor) {
