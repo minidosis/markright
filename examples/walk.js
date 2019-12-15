@@ -12,11 +12,10 @@ const mrStr = `
 Some more text outside
 @title(1,2,3){jer@jer{1}jer@jer<2>]]}
 `
-const lines = mrStr.split('\n')
 
 const report = x => () => console.log(x)
 
-markright.parse(lines, {
+markright.parse(mrStr, {
   'main': (args, body) => {
     console.log('main')
     return markright.parse(body, {
@@ -25,7 +24,7 @@ markright.parse(lines, {
       'something': report('something'),
       'title': (args, body) => {
         console.log('title(inner)')
-        return markright.parse([body], {
+        return markright.parse(body, {
           'c': report('c'),
           'b': report('b'),
         })

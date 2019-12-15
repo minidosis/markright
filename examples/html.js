@@ -1,6 +1,17 @@
 
 const { parse } = require('../markright')
 
+const splitLines = (str) => {
+  if (typeof str !== 'string') {
+    throw new Error(`splitLines splits strings: received ${JSON.stringify(str)}`)
+  }
+  let lines = str.split('\n')
+  if (str[str.length-1] === '\n') {
+    lines = lines.slice(0, lines.length-1)
+  }
+  return lines
+}
+
 const escape = (text) => {
   let result = ''
   for (let i = 0; i < text.length; i++) {
@@ -25,15 +36,16 @@ class HtmlFuncMap {
   em = this._direct('em')
   h2 = this._direct('h2')
 
-  olist = (_, children) => {
+  olist = (_, rawChildren) => {
     let html = `<div class="enumerate">`
     let num = 1
+    const children = splitLines(rawChildren)
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       if (child) {
         html += `<div class="item">
           <span class="num">${num}</span>
-          <div class="content">${parse([child], this)}</div>
+          <div class="content">${parse(child, this)}</div>
         </div>`
         num++
       }
@@ -42,8 +54,9 @@ class HtmlFuncMap {
     return html
   }
 
-  ulist = (_, children) => {
+  ulist = (_, rawChildren) => {
     let html = `<div class="itemize">`
+    const children = splitLines(rawChildren)
     for (let i = 0; i < children.length; i++) {
       child = children[i]
       if (child && typeof child === "object" && child.id == "row") {
@@ -57,14 +70,14 @@ class HtmlFuncMap {
     return html
   }
 
-  pre = (args, children) => {
+  pre = (args, rawChildren) => {
     let [lang, _class] = args ? args : [];
     let html = ''
     html += `<div class="pre ${_class ? _class : ""}">`
     html += `<pre><code class="language-${lang}">`
-    html += parse(children, {
+    html += parse(rawChildren, {
       ...this,
-      __block__: (children) => children.join('\n'),
+      __block__: (children) => children,
       __text__: (text) => escape(text)
     })
     html += `</code></pre></div>`
@@ -72,11 +85,12 @@ class HtmlFuncMap {
   }
 
   code = (_, children) => `<span class="code">${parse(children, this)}</span>`
-  img = (_, children) => `<img src="asset/${children[0]}" />`
+  img = (_, children) => `<img src="asset/${children}" />`
 
   box = (_, children) => `<span class="box">${parse(children, this)}</span>`
 
-  header = (_, children) => {
+  header = (_, rawChildren) => {
+    const children = splitLines(rawChildren)
     let html = `<thead><tr>`
     children.forEach(ch => {
       html += `<th>${ch.children[0]}</th>`
@@ -89,7 +103,7 @@ class HtmlFuncMap {
     let html = `<tr>`
     html += parse(children, {
       ...this,
-      __block__: (children) => parse(children, this),
+      __block__: (children) => children,
       __line__: (children) => `<td>${children.join('')}</td>`,
     })
     html += `</tr>`
@@ -124,7 +138,7 @@ class HtmlFuncMap {
   __command__ = (cmd) => `<span class="error">Cmd <code>"${cmd.name}"</code> not found</span>`
 }
 
-const genHtml = (str) => parse(str.split('\n'), new HtmlFuncMap())
+const genHtml = (str) => parse(str, new HtmlFuncMap())
 
 const html = genHtml(`
 @h2{Que tal}

@@ -42,7 +42,7 @@ const report = (title, input, fn) => {
     if (actual !== expected) {
       write('x')
       return [
-        `Test "${title}" failed:\n${colors.brightYellow(input.join('\n'))}`,
+        `Test "${title}" failed:\n${colors.brightYellow(input)}`,
         `${colors.green(`"${expected}"`)}`,
         `${colors.red(`"${actual}"`)}`,
         ``,
@@ -58,12 +58,12 @@ const report = (title, input, fn) => {
 
 const parseTest = (input, output) => ({
   actual: print(MR.parseRecur(input)),
-  expected: output.join('\n'),
+  expected: output,
 })
 
 const jsonTest = (input, output) => ({
   actual: MR.parseRecur(input).toJson(),
-  expected: output.join('\n'),
+  expected: output,
 })
 
 const testParser = (testFunc, errors) => (args, rawChildren) => {
@@ -76,20 +76,32 @@ const testParser = (testFunc, errors) => (args, rawChildren) => {
   if (!input || !output) {
     throw new Error(`Error in test "${testName}": Input or output is empty!`)
   }
+  // If the output has a last '\n' we should remove it
+  if (output[output.length-1] === '\n') {
+    output = output.slice(0, output.length-1)
+  }
   const errs = report(testName, input, () => testFunc(input, output))
-  if (errs) errors.push(...errs)
+  if (errs) {
+    errors.push(...errs)
+    throw new Error(`Some test failed`)
+  }
 }
 
 const runTest = (testfile) => {
   let errors = []
-  const fileContent = fs.readFileSync(testfile).toString()
-  MR.parse(fileContent.split('\n'), {
-    'parse-test': testParser(parseTest, errors),
-    'json-test': testParser(jsonTest, errors),
-  })
-  write('\n')
-  if (errors.length > 0) {
-    write(`\n${errors.join('\n')}\n`)
+  try {
+    const fileContent = fs.readFileSync(testfile).toString()
+    MR.parse(fileContent, {
+      'parse-test': testParser(parseTest, errors),
+      'json-test': testParser(jsonTest, errors),
+    })
+  } catch (e) {
+    console.error(e)
+    write('\n')
+    if (errors.length > 0) {
+      write(`\n${errors.join('\n')}\n`)
+    }
+    process.exit(1)
   }
 }
 
@@ -104,6 +116,7 @@ fs.readdir('./tests', (err, files) => {
   testfiles.forEach((testfile) => {
     write(`${testfile}${' '.repeat(maxLength + 1 - testfile.length)}`)
     runTest(`tests/${testfile}`)
+    write(`\n`)
   })
 })
 

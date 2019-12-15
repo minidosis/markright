@@ -12,5 +12,11 @@ and more on the @b{next} line, @yay @yay2
 @done{true}
 `
 
-const obj = markright.parse(mr.split('\n'))
+const obj = markright.parse(mr, {
+  em: (_, children) => new markright.Text(`**${children}**`),
+  done: (_, children) => {
+    console.log(children)
+    return markright.parse(`@parsedDone\n  new stuff\n`)
+  }
+})
 console.log(markright.stringify(obj))

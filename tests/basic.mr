@@ -21,7 +21,7 @@
 
 @parse-test(simple command)
   @input{@something}
-  @output{Block(@something)}
+  @output{@something}
 
 @parse-test(three inline commands)
   @input
@@ -31,7 +31,7 @@
 
 @parse-test(spaces between inline commands)
   @input{@a  @b@c}
-  @output{Block(Line(@a  @b@c))}
+  @output{Line(@a  @b@c)}
 
 @parse-test(spaces between inline commands 2)
   @input
@@ -41,8 +41,7 @@
       
 @parse-test(text and inline commands)
   @input{some text@a @b @c}
-  @output
-    Block(Line(some text@a @b @c))
+  @output{Line(some text@a @b @c)}
   
 @parse-test(two lines with inline commands)
   @input
@@ -157,8 +156,7 @@
 
 @parse-test(Different delimiters 3 + no line)
   @input{@aaa[@bbb<@ccc>]}
-  @output
-    Block(@aaa[@bbb<@ccc>])
+  @output{@aaa[@bbb<@ccc>]}
 
 @parse-test(Nested block commands)
   @input
@@ -250,11 +248,11 @@
 
 @parse-test(Command char)
   @input{@@}
-  @output{Block(Line(@))}
+  @output{Line(@)}
 
 @parse-test(Command char 2)
   @input{1@@}
-  @output{Block(Line(1@))}
+  @output{Line(1@)}
 
 @parse-test(numbers and dashes in commands)
   @input

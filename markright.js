@@ -5,6 +5,14 @@ const assert = (expr, msg) => {
   }
 }
 
+const splitLines = (str) => {
+  let lines = str.split('\n')
+  if (str[str.length-1] === '\n') {
+    lines = lines.slice(0, lines.length-1)
+  }
+  return lines
+}
+
 const commandChar = '@'
 const openDelimiters = '[{(<'
 const closeDelimiters = ']})>'
@@ -27,8 +35,13 @@ const indentation = line => (emptyLine(line) ? 0 : [...line].findIndex(c => c !=
 // Objects
 
 class Item {
-  addRaw(str) { this.rawChildren = [...(this.rawChildren || []), str] }
-  hasRawChildren() { return Array.isArray(this.rawChildren) }
+  addRaw(str) {
+    if (this.rawChildren === undefined) {
+      this.rawChildren = ''
+    }
+    this.rawChildren += str + '\n'
+  }
+  hasRawChildren() { return this.rawChildren !== undefined }
   add(str) { this.children = [...(this.children || []), str] }
   toJson() { throw new Error(`Item.toJson is abstract! (obj = ${JSON.stringify(this)})`) }
 }
@@ -123,10 +136,10 @@ class Parser {
 
   parseRawChildren(cmd) {
     if (cmd.hasRawChildren()) {
+      const rawChildren = cmd.rawChildren
       if (cmd instanceof InlineCommand) {
-        assert(cmd.rawChildren.length === 1)
-        assert(typeof cmd.rawChildren[0] === 'string')
-        let item = this.parseLine(cmd.rawChildren[0], this.funcMap)
+        assert(typeof rawChildren === 'string')
+        let item = this.parseLine(rawChildren, this.funcMap)
         if (item instanceof Line) {
           item.children = item.children.map(x => {
             return x instanceof Command ? this.parseRawChildren(x) : x
@@ -138,9 +151,8 @@ class Parser {
         cmd.children = item
       }
       else if (cmd instanceof BlockCommand) {
-        assert(Array.isArray(cmd.rawChildren))
-        assert(cmd.rawChildren.every(ln => typeof ln === 'string'))
-        cmd.children = this.parse(cmd.rawChildren, this.funcMap)
+        assert(typeof rawChildren === 'string')
+        cmd.children = this.parse(rawChildren, this.funcMap)
       }
       else {
         assert(false, 'Not an InlineCommand or BlockCommand')
@@ -256,7 +268,7 @@ class Parser {
       }
       i = end + width
       return {
-        rawChild: [lineStr.slice(start, end)],
+        rawChild: lineStr.slice(start, end),
         delim: {
           open: openDelim,
           close: closeDelim,
@@ -304,10 +316,15 @@ class Parser {
     }
   }
 
-  parse(lines) {
-    assert(lines, 'lines is null or undefined')
-    assert(Array.isArray(lines), '"lines" must be an array')
-    assert(lines.every(ln => typeof ln === 'string'), 'All lines are not strings')
+  parse(str) {
+    if (str === null || str === undefined) {
+      throw new Error(`The text to parse is ${str}`)
+    }
+    if (typeof str !== 'string') {
+      throw new Error(`The first argument of 'parse' must be a string (its ${JSON.stringify(str)})`)
+    }
+    const isBlock = str.indexOf('\n') !== -1
+    const lines = splitLines(str)
 
     const itemList = []
     let blockCommand = null
@@ -383,7 +400,14 @@ class Parser {
     if (pendingEmptyLine) {
       pushEmptyLine()
     }
-    return this.execute(new Block(itemList))
+    if (isBlock) {
+      return this.execute(new Block(itemList))
+    } else {
+      if (itemList.length !== 1) {
+        throw new Error('itemList should have one item')
+      }
+      return itemList[0]
+    }
   }
 }
 
@@ -428,7 +452,7 @@ const stringify = (mr) => {
         if (args) add(`(${args.join(',')})`)
         indent++
         if (rawChildren) {
-          rawChildren.forEach(line => {
+          splitLines(rawChildren).forEach(line => {
             newLine()
             add(line)
           })
@@ -445,7 +469,7 @@ const stringify = (mr) => {
         if (delim) {
           add(delim.open)
           if (rawChildren) {
-            add(rawChildren.join(''))
+            add(rawChildren)
           } else {
             _stringify(children)
           }
@@ -459,6 +483,9 @@ const stringify = (mr) => {
   }
 
   _stringify(mr)
+  if (line) {
+    result += line + '\n'
+  }
   return result
 }
 
