@@ -1,3 +1,7 @@
+const {
+  Item, Text, Block, Line, Command, BlockCommand, InlineCommand,
+} = require('./model')
+
 const stringify = (mr) => {
   let indent = 0
   let line = ''
