@@ -1,22 +1,16 @@
 
-const assert = (expr, msg) => {
-  if (!expr) {
-    throw new Error(`assert failed: ${msg}`)
-  }
-}
+const { assert, splitLines, allSpaces, emptyLine, indentation } = require('./utils')
+const { Item, Text, Block, Line, Command, BlockCommand, InlineCommand } = require('./model')
 
-const splitLines = (str) => {
-  let lines = str.split('\n')
-  if (str[str.length-1] === '\n') {
-    lines = lines.slice(0, lines.length-1)
-  }
-  return lines
-}
+// Delimiters
 
 const commandChar = '@'
 const openDelimiters = '[{(<'
 const closeDelimiters = ']})>'
 const allDelimiters = `${commandChar} ${openDelimiters}${closeDelimiters}`
+
+const isOpenDelim = ch => openDelimiters.indexOf(ch) !== -1
+const isDelimiter = ch => allDelimiters.indexOf(ch) !== -1
 
 const matchingDelimiter = (delim) => {
   assert(delim[0].repeat(delim.length) === delim) // all the same char
@@ -24,19 +18,6 @@ const matchingDelimiter = (delim) => {
   assert(pos !== -1, `No matching delimiter for '${delim[0]}'`)
   return closeDelimiters[pos].repeat(delim.length)
 }
-
-const isOpenDelim = ch => openDelimiters.indexOf(ch) !== -1
-const isDelimiter = ch => allDelimiters.indexOf(ch) !== -1
-
-const allSpaces = line => line === ' '.repeat(line.length)
-const emptyLine = line => line === '' || allSpaces(line)
-const indentation = line => (emptyLine(line) ? 0 : [...line].findIndex(c => c !== ' '))
-
-// Objects
-
-const {
-  Item, Text, Block, Line, Command, BlockCommand, InlineCommand,
-} = require('./model')
 
 // Parser
 

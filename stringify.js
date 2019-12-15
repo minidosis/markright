@@ -1,6 +1,5 @@
-const {
-  Item, Text, Block, Line, Command, BlockCommand, InlineCommand,
-} = require('./model')
+const { Text, Block, Line, BlockCommand, InlineCommand } = require('./model')
+const { splitLines } = require('./utils')
 
 const stringify = (mr) => {
   let indent = 0
