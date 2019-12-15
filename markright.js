@@ -89,7 +89,10 @@ class Parser {
 
   execute(item) {
     const executeCommand = (cmd) => {
-      const fn = this.getFunc(cmd.name)
+      let fn = this.getFunc(cmd.name)
+      if (fn === undefined) {
+        fn = this.getFunc('__command__')
+      }
       if (fn) {
         return fn(cmd)
       }
