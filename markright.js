@@ -423,21 +423,32 @@ const stringify = (mr) => {
         break
       }
       case BlockCommand: {
-        const { name, args, children } = x
+        const { name, args, rawChildren, children } = x
         add(`@${name}`)
         if (args) add(`(${args.join(',')})`)
         indent++
-        _stringify(children)
+        if (rawChildren) {
+          rawChildren.forEach(line => {
+            newLine()
+            add(line)
+          })
+        } else {
+          _stringify(children)
+        }
         indent--
         break
       }
       case InlineCommand: {
-        const { name, args, delim, children } = x
+        const { name, args, delim, rawChildren, children } = x
         add(`@${name}`)
         if (args) add(`(${args.join(',')})`)
         if (delim) {
           add(delim.open)
-          _stringify(children)
+          if (rawChildren) {
+            add(rawChildren.join(''))
+          } else {
+            _stringify(children)
+          }
           add(delim.close)
         }
         break
