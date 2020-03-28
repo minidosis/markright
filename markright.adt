@@ -1,16 +1,21 @@
-CommandChar: "@"
-Delimiters: "(){}[]<>,"
-
-BaseCommand<T>: {
-  name: string,       // sin delimitadores
-  args: List<string>, // sin delimitadores
-  children: List<T>
+Command = {
+  name: String
+  args: List<String>
 }
 
-Markright: List<Item>
-Item: { rawContent: string } * (BlockCommand | Line)
-  BlockCommand: BaseCommand<Item>
-  Line: { children: List<InlineItem> }
-    InlineItem: InlineCommand | Text
-      InlineCommand: BaseCommand<InlineItem>
-      Text: { child: string }
+BlockCommand : BaseCommand = {
+  lines: List<String>
+}
+
+InlineCommand : BaseCommand = {
+  body: Line
+}
+
+BlockItem: BlockCommand | Line
+InlineItem: InlineCommand | String
+
+Line {
+  children: List<InlineItem>
+}
+
+Markright: List<BlockItem>
