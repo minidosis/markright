@@ -11,6 +11,7 @@ class Item {
   toJson() { throw new Error(`Item.toJson is abstract! (obj = ${JSON.stringify(this)})`) }
 }
 
+// TODO: Just use String...
 class Text extends Item {
   constructor(text) {
     super()
